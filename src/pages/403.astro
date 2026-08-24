@@ -1,0 +1,17 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ErrorPage from '../components/ErrorPage.astro';
+import { site } from '../config/site';
+---
+
+<BaseLayout title={`403 · 禁止访问`}>
+  <main class="nf-wrap">
+    <div class="nf-card">
+      <ErrorPage
+        code="403"
+        title="禁止访问"
+        desc="你没有权限查看此页面，如有疑问请联系站点管理员。"
+      />
+    </div>
+  </main>
+</BaseLayout>

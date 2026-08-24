@@ -1,0 +1,151 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollection, render } from 'astro:content';
+import { site } from '../config/site';
+
+// 动态按时间倒序
+const moments = (await getCollection('moments')).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+
+// 按天分组（预计算全局唯一索引 gi，供评论区容器 id 使用，避开运行时 indexOf 失效）
+type MItem = { m: (typeof moments)[number]; gi: number };
+const days = new Map<string, MItem[]>();
+moments.forEach((m, gi) => {
+  const key = m.data.date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+  if (!days.has(key)) days.set(key, []);
+  days.get(key)!.push({ m, gi });
+});
+const dayKeys = [...days.keys()];
+
+function timeStr(d: Date) {
+  return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+}
+function dayLabel(d: Date) {
+  const today = new Date();
+  const y = new Date(today);
+  y.setDate(today.getDate() - 1);
+  const s = (x: Date) => x.toDateString();
+  if (s(d) === s(today)) return '今天';
+  if (s(d) === s(y)) return '昨天';
+  return d.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
+}
+function yearLabel(d: Date) {
+  return d.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+---
+
+<BaseLayout title={`动态 · ${site.brand}`}>
+  <main class="moments-wrap">
+    <div class="moments-card">
+      <h1 class="archive-title">动态</h1>
+      <p class="archive-count">共 {moments.length} 条动态</p>
+      <div class="moments-timeline">
+        {dayKeys.map((k) => (
+          <section class="moment-day">
+            <div class="moment-day__label">{dayLabel(days.get(k)![0].m.data.date)} <small>{yearLabel(days.get(k)![0].m.data.date)}</small></div>
+            {days.get(k)!.map(async ({ m, gi }) => {
+              const { Content } = await render(m);
+              const n = m.data.images.length;
+              return (
+                <article class="moment" style={`animation-delay:${gi * 70}ms`}>
+                  <div class="moment-dot"></div>
+                  <div class="moment-body">
+                    <div class="moment-head">
+                      <img class="moment-avatar" src="/avatar.svg" alt={site.user.name} loading="lazy" />
+                      <div class="moment-head__info">
+                        <span class="moment-nick">{site.user.name}</span>
+                        <span class="moment-time">{timeStr(m.data.date)}</span>
+                      </div>
+                    </div>
+                    {m.data.title && <h3 class="moment-title">{m.data.title}</h3>}
+                    <div class="moment-text"><Content /></div>
+                    {n > 0 && (
+                      <div class={`moment-grid${n === 1 ? ' moment-grid--single' : ''}${n >= 5 ? ' moment-grid--many' : ''}`}>
+                        {m.data.images.map((src) => (
+                          <img class="moment-img" src={src} alt="" loading="lazy" decoding="async" />
+                        ))}
+                      </div>
+                    )}
+                    {m.data.video && (
+                      <video class="moment-video" controls controlsList="nodownload" preload="metadata" src={m.data.video}></video>
+                    )}
+                    {site.comments.enabled && (
+                      <>
+                        <div class="moment-cmtbar">
+                          <button type="button" class="moment-cmt-btn" data-target={`tcomment-${gi}`}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                            <span>评论</span>
+                          </button>
+                          <button type="button" class="moment-cmt-close" data-target={`tcomment-${gi}`}>收起评论</button>
+                        </div>
+                        <div class="moment-comments" id={`tcomment-${gi}`} data-path={`/moments/${m.id}`} style="display:none">
+                          <div class="tk-mount" id={`tk-mount-${gi}`}></div>
+                        </div>
+                        <button type="button" class="moment-cmt-close moment-cmt-close--bottom" data-target={`tcomment-${gi}`}>收起评论</button>
+                      </>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </section>
+        ))}
+      </div>
+    </div>
+  </main>
+
+  {site.comments.enabled && (
+    <script is:inline>
+      // 评论展开/收起：全部用内联 style 控制（最优先级，任何覆盖都不影响）
+      // 每个动态有 顶部bar（评论/收起）+ 评论区下方「收起评论」两个收起入口
+      function momentCmtOpen(box) {
+        box.style.display = 'block';
+        box.setAttribute('data-open', '1');
+        var prev = box.previousElementSibling;
+        var bar = prev && prev.classList && prev.classList.contains('moment-cmtbar') ? prev : null;
+        if (bar) bar.classList.add('moment-cmtbar--open');
+        var bottom = box.nextElementSibling;
+        if (bottom && bottom.classList.contains('moment-cmt-close--bottom')) bottom.style.display = 'inline-flex';
+        window.ensureComments && window.ensureComments(box);
+        // 拉取该线程评论数，更新按钮
+        if (window.__COMMENTS__ && window.twikoo) {
+          window.twikoo.getCommentsCount({ envId: window.__COMMENTS__.serverURL, urls: [box.dataset.path] })
+            .then(function (res) {
+              var n = res && res[box.dataset.path];
+              var btn = box.previousElementSibling.querySelector('.moment-cmt-btn span');
+              if (btn && typeof n === 'number') btn.textContent = '评论 ' + n;
+            }).catch(function () {});
+        }
+      }
+      function momentCmtClose(box) {
+        box.style.display = 'none';
+        box.removeAttribute('data-open');
+        var prev = box.previousElementSibling;
+        var bar = prev && prev.classList && prev.classList.contains('moment-cmtbar') ? prev : null;
+        if (bar) {
+          bar.classList.remove('moment-cmtbar--open');
+          var tc = bar.querySelector('.moment-cmt-close');
+          if (tc) tc.style.display = 'none'; // 顶部收起按钮内联隐藏，双重保险
+        }
+        var bottom = box.nextElementSibling;
+        if (bottom && bottom.classList.contains('moment-cmt-close--bottom')) bottom.style.display = 'none';
+      }
+      document.addEventListener('click', function (e) {
+        var btn = e.target.closest('.moment-cmt-btn');
+        if (btn) {
+          var box = document.getElementById(btn.dataset.target);
+          if (!box) return;
+          if (box.getAttribute('data-open')) momentCmtClose(box);
+          else momentCmtOpen(box);
+          return;
+        }
+        var close = e.target.closest('.moment-cmt-close');
+        if (close) {
+          var box2 = document.getElementById(close.dataset.target);
+          if (box2) momentCmtClose(box2);
+        }
+      });
+    </script>
+  )}
+</BaseLayout>

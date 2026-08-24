@@ -1,0 +1,79 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { getCategory } from '../lib/work';
+
+interface Props {
+  work: CollectionEntry<'works'>;
+  index?: number;
+}
+const { work, index = 0 } = Astro.props;
+const { title, type, cover, ratio, duration, tags, updated, images } = work.data;
+const poster = cover || (images && images[0]) || '';
+const isGallery = images && images.length >= 2;
+
+// 分类：frontmatter category 优先，旧文章回退到第一个标签
+const category = getCategory(work);
+
+// 卡片标签：分类（主题色底）置顶 + 其余附加标签
+const chips = [category, ...tags.filter((t) => t !== category)].slice(0, 4);
+
+// 发布日期（短格式）
+const dateStr = work.data.date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+const dateLine = updated ? `${dateStr} · 更新 ${updated}` : dateStr;
+
+// 无封面时：用标题生成小红书风文字封面，渐变按文章 id 稳定取色
+const grad = [...work.id].reduce((a, c) => a + c.charCodeAt(0), 0) % 5;
+---
+
+<article class="work-card" style={`animation-delay:${index * 40}ms`}>
+  <a href={`/works/${work.id}/`}>
+    <div class="work-cover" style={`aspect-ratio:${poster ? ratio : '8/5'}`}>
+      {poster ? (
+        <img
+          src={poster}
+          alt={title}
+          loading={index < 2 ? 'eager' : 'lazy'}
+          fetchpriority={index < 2 ? 'high' : 'auto'}
+          decoding="async"
+        />
+      ) : (
+        <div class={`cover-text cover-text--${grad}`}>
+          <span class="cover-text__main">{title}</span>
+        </div>
+      )}
+      <div class="work-tags">
+        {chips.map((c, i) => (
+          <span class={`work-tag${i > 0 ? ' work-tag--alt' : ''}`}>{c}</span>
+        ))}
+      </div>
+      {isGallery ? (
+        <span class="cover-btn gallery-count" aria-label="图集">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+        </span>
+      ) : type === 'video' ? (
+        <>
+          <span class="cover-btn" aria-label="播放视频">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          </span>
+          {duration && <span class="work-duration">{duration}</span>}
+        </>
+      ) : !cover && (
+        <span class="cover-btn" aria-label="文章">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6"/></svg>
+        </span>
+      )}
+    </div>
+    <div class="work-info">
+      <div class="work-info__main">
+        <p class="work-title">{title}</p>
+        <div class="work-chips">
+          {chips.map((c, i) => (
+            <span class={`work-chip${i === 0 ? ' work-chip--cat' : ''}`}>{c}</span>
+          ))}
+        </div>
+        <div class="work-date">{dateLine}</div>
+      </div>
+      <svg class="work-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+    </div>
+  </a>
+</article>

@@ -1,0 +1,17 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ErrorPage from '../components/ErrorPage.astro';
+import { site } from '../config/site';
+---
+
+<BaseLayout title={`502 · 网关错误`}>
+  <main class="nf-wrap">
+    <div class="nf-card">
+      <ErrorPage
+        code="502"
+        title="网关出错了"
+        desc="服务暂时不可用，稍等片刻再刷新试试。"
+      />
+    </div>
+  </main>
+</BaseLayout>

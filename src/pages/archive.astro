@@ -1,0 +1,216 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+import { site } from '../config/site';
+import { getCategory } from '../lib/work';
+
+// 全部作品按日期倒序
+const works = (await getCollection('works')).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+
+// 按年份分组（时间视图）
+const groups = new Map<number, typeof works>();
+for (const w of works) {
+  const y = w.data.date.getFullYear();
+  if (!groups.has(y)) groups.set(y, []);
+  groups.get(y)!.push(w);
+}
+const years = [...groups.keys()];
+
+// 按分类分组（分类视图）
+const catGroups = new Map<string, typeof works>();
+for (const w of works) {
+  const c = getCategory(w);
+  if (!catGroups.has(c)) catGroups.set(c, []);
+  catGroups.get(c)!.push(w);
+}
+const cats = [...catGroups.keys()];
+
+// 按标签分组（标签视图）：遍历所有文章的附加标签
+const tagGroups = new Map<string, typeof works>();
+for (const w of works) {
+  for (const tg of (w.data.tags || [])) {
+    if (!tagGroups.has(tg)) tagGroups.set(tg, []);
+    tagGroups.get(tg)!.push(w);
+  }
+}
+const allTags = [...tagGroups.keys()];
+
+function md(date: Date) {
+  return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
+}
+---
+
+<BaseLayout title={`归档 · ${site.brand}`}>
+  <main class="archive-wrap">
+    <div class="archive-card">
+      <h1 class="archive-title">归档</h1>
+      <p class="archive-count">共 {works.length} 篇作品 · {cats.length} 个分类 · {allTags.length} 个标签</p>
+
+      <!-- 筛选器：时间 / 分类 / 标签 -->
+      <div class="archive-tabs" id="archiveTabs">
+        <button type="button" class="archive-tab" data-view="time">按时间</button>
+        <button type="button" class="archive-tab" data-view="cat">按分类</button>
+        <button type="button" class="archive-tab" data-view="tag">按标签</button>
+      </div>
+
+      <!-- 时间视图 -->
+      <section id="view-time" class="archive-view">
+        {years.map((y) => (
+          <div class="archive-year">
+            <h2 class="archive-year__title">{y}</h2>
+            <div class="archive-list">
+              {groups.get(y)!.map((w) => (
+                <a class="archive-item" href={`/works/${w.id}/`}>
+                  <span class="archive-item__date">{md(w.data.date)}</span>
+                  <span class="archive-item__title">{w.data.title}</span>
+                  <span class="archive-item__tag archive-item__tag--cat">{getCategory(w)}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <!-- 分类视图 -->
+      <section id="view-cat" class="archive-view" hidden>
+        <div class="cat-filter" id="catFilter">
+          <button type="button" class="cat-filter__pill cat-filter__pill--all cat-filter__pill--active" data-cat="">全部</button>
+          {cats.map((c) => (
+            <button type="button" class="cat-filter__pill" data-cat={c}>{c}</button>
+          ))}
+        </div>
+        {cats.map((c) => (
+          <div class="archive-year cat-section" id={`cat-${c}`} data-cat={c}>
+            <h2 class="archive-year__title">
+              <span class="archive-cat-pill">{c}</span>
+              <small>{catGroups.get(c)!.length} 篇</small>
+            </h2>
+            <div class="archive-list">
+              {catGroups.get(c)!.map((w) => (
+                <a class="archive-item" href={`/works/${w.id}/`}>
+                  <span class="archive-item__date">{md(w.data.date)}</span>
+                  <span class="archive-item__title">{w.data.title}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <!-- 标签视图 -->
+      <section id="view-tag" class="archive-view" hidden>
+        <div class="cat-filter" id="tagFilter">
+          <button type="button" class="cat-filter__pill cat-filter__pill--all cat-filter__pill--active" data-tag="">全部</button>
+          {allTags.map((tg) => (
+            <button type="button" class="cat-filter__pill" data-tag={tg}>{tg}</button>
+          ))}
+        </div>
+        {allTags.map((tg) => (
+          <div class="archive-year tag-section" id={`tag-${tg}`} data-tag={tg}>
+            <h2 class="archive-year__title">
+              <span class="archive-cat-pill">{tg}</span>
+              <small>{tagGroups.get(tg)!.length} 篇</small>
+            </h2>
+            <div class="archive-list">
+              {tagGroups.get(tg)!.map((w) => (
+                <a class="archive-item" href={`/works/${w.id}/`}>
+                  <span class="archive-item__date">{md(w.data.date)}</span>
+                  <span class="archive-item__title">{w.data.title}</span>
+                  <span class="archive-item__tag archive-item__tag--cat">{getCategory(w)}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
+    </div>
+  </main>
+
+  <script is:inline>
+    // 筛选器：时间 / 分类 / 标签 切换（支持 ?view= 与 #cat-/#tag- 锚点直达）
+    (function () {
+      var tabs = document.getElementById('archiveTabs');
+      if (!tabs) return;
+      var timeV = document.getElementById('view-time');
+      var catV = document.getElementById('view-cat');
+      var tagV = document.getElementById('view-tag');
+      var btnMap = {};
+      tabs.querySelectorAll('.archive-tab').forEach(function (b) { btnMap[b.dataset.view] = b; });
+      function setView(v) {
+        timeV.hidden = v !== 'time';
+        catV.hidden = v !== 'cat';
+        tagV.hidden = v !== 'tag';
+        Object.keys(btnMap).forEach(function (k) {
+          btnMap[k].classList.toggle('archive-tab--active', k === v);
+        });
+      }
+      // 分类筛选：只显示对应分类的文章列表（不滚动定位）
+      var filter = document.getElementById('catFilter');
+      function applyCatFilter(c) {
+        var secs = catV.querySelectorAll('.cat-section');
+        secs.forEach(function (s) { s.hidden = !!c && s.dataset.cat !== c; });
+        filter.querySelectorAll('.cat-filter__pill').forEach(function (b) {
+          b.classList.toggle('cat-filter__pill--active', b.dataset.cat === c);
+        });
+      }
+      // 标签筛选
+      var tagFilter = document.getElementById('tagFilter');
+      function applyTagFilter(tg) {
+        var secs = tagV.querySelectorAll('.tag-section');
+        secs.forEach(function (s) { s.hidden = !!tg && s.dataset.tag !== tg; });
+        tagFilter.querySelectorAll('.cat-filter__pill').forEach(function (b) {
+          b.classList.toggle('cat-filter__pill--active', b.dataset.tag === tg);
+        });
+      }
+      function decodeHash(prefix) {
+        if (location.hash.indexOf(prefix) !== 0) return '';
+        try { return decodeURIComponent(location.hash.slice(prefix.length)); } catch (e) { return ''; }
+      }
+      function init() {
+        var v = new URLSearchParams(location.search).get('view');
+        var hc = decodeHash('#cat-');
+        var ht = decodeHash('#tag-');
+        if (hc) v = 'cat';
+        if (ht) v = 'tag';
+        setView(v === 'cat' ? 'cat' : v === 'tag' ? 'tag' : 'time');
+        if (v === 'cat') applyCatFilter(hc);
+        if (v === 'tag') applyTagFilter(ht);
+      }
+      if (filter) {
+        filter.addEventListener('click', function (e) {
+          var b = e.target.closest('.cat-filter__pill');
+          if (!b) return;
+          var c = b.dataset.cat || '';
+          applyCatFilter(c);
+          var u = new URL(location.href);
+          if (c) u.hash = '#cat-' + encodeURIComponent(c); else u.hash = '';
+          history.replaceState(null, '', u);
+        });
+      }
+      if (tagFilter) {
+        tagFilter.addEventListener('click', function (e) {
+          var b = e.target.closest('.cat-filter__pill');
+          if (!b) return;
+          var tg = b.dataset.tag || '';
+          applyTagFilter(tg);
+          var u = new URL(location.href);
+          if (tg) u.hash = '#tag-' + encodeURIComponent(tg); else u.hash = '';
+          history.replaceState(null, '', u);
+        });
+      }
+      tabs.querySelectorAll('.archive-tab').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var v = b.dataset.view;
+          setView(v);
+          var u = new URL(location.href);
+          if (v === 'cat' || v === 'tag') u.searchParams.set('view', v); else u.searchParams.delete('view');
+          u.hash = '';
+          history.replaceState(null, '', u);
+        });
+      });
+      init();
+    })();
+  </script>
+</BaseLayout>

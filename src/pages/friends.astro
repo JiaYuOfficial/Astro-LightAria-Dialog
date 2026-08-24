@@ -1,0 +1,25 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { site } from '../config/site';
+---
+
+<BaseLayout title={`友情链接 · ${site.brand}`}>
+  <main class="archive-wrap">
+    <div class="archive-card">
+      <h1 class="archive-title">友情链接</h1>
+      <p class="archive-count">共 {site.friends.length} 个友链 · 欢迎交换</p>
+      <div class="friends-grid">
+        {site.friends.map((f) => (
+          <a class="friend-card" href={f.url} target="_blank" rel="noopener noreferrer">
+            <img class="friend-avatar" src={f.avatar} alt={f.name} loading="lazy" decoding="async" />
+            <div class="friend-info">
+              <div class="friend-name">{f.name}</div>
+              <div class="friend-desc">{f.desc}</div>
+            </div>
+            <svg class="friend-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg>
+          </a>
+        ))}
+      </div>
+    </div>
+  </main>
+</BaseLayout>

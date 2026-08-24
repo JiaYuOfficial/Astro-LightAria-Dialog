@@ -1,0 +1,346 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection, render } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
+import { site } from '../../config/site';
+import { getCategory } from '../../lib/work';
+
+export async function getStaticPaths() {
+  const works = await getCollection('works');
+  return works.map((w) => ({ params: { slug: w.id }, props: { work: w } }));
+}
+
+const { work } = Astro.props;
+const { Content, headings } = await render(work);
+const all = await getCollection('works');
+const related = all
+  .filter((x) => x.id !== work.id && getCategory(x) === getCategory(work))
+  .slice(0, 2);
+
+const { title, tag, type, cover, duration, date, video, tags, updated, images } = work.data;
+const isGallery = images && images.length >= 2;
+const category = getCategory(work);
+
+// 文章页标签：分类（主题色底）置顶 + 附加标签（与信息流卡片一致）
+const allTags = [category, ...tags.filter((t) => t !== category)];
+
+// 无封面时：用标题生成小红书风文字封面，渐变按文章 id 稳定取色
+const grad = [...work.id].reduce((a, c) => a + c.charCodeAt(0), 0) % 5;
+function gradOf(id: string) {
+  return [...id].reduce((a, c) => a + c.charCodeAt(0), 0) % 5;
+}
+
+// 视频无封面时：动态生成标题封面 SVG 作为播放器 poster（无需图片文件）
+const GRADS = [
+  ['#ff9a8b', '#ff6a88'], ['#a18cd1', '#fbc2eb'], ['#84fab0', '#8fd3f4'],
+  ['#f6d365', '#fda085'], ['#667eea', '#764ba2'],
+];
+function esc(s: string) {
+  return s.replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c]!));
+}
+function titlePoster(title: string, tag: string): string {
+  const [c1, c2] = GRADS[grad];
+  const lines = title.length > 12 ? [title.slice(0, 12), title.slice(12, 24)] : [title];
+  const texts = lines
+    .map((l, i) => `<text x="400" y="${190 + i * 54}" text-anchor="middle" font-size="38" font-weight="700" fill="#fff" font-family="-apple-system,'PingFang SC',sans-serif">${esc(l)}</text>`)
+    .join('');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs><rect width="800" height="450" fill="url(#g)"/>${texts}<text x="400" y="352" text-anchor="middle" font-size="20" fill="rgba(255,255,255,.92)" font-family="-apple-system,'PingFang SC',sans-serif">${esc(tag)}</text></svg>`;
+  return 'data:image/svg+xml,' + encodeURIComponent(svg);
+}
+
+// 文章目录：自动解析 md 标题（h2/h3），统一展示在正文底部
+const toc = headings.filter((h) => h.depth <= 3);
+const dateStr = date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+---
+
+<BaseLayout title={`${title} · ${site.brand}`}>
+  <main class="article-wrap">
+    <article class="article-card">
+      <div class="article-hero">
+        {isGallery ? (
+          <div class="gallery" id="gallery">
+            <div class="gallery__track">
+              {images.map((src, i) => (
+                <div class="gallery__slide">
+                  <img src={src} alt={`${title} ${i + 1}`} loading="eager" fetchpriority={i === 0 ? 'high' : undefined} decoding="async" />
+                </div>
+              ))}
+            </div>
+            <button type="button" class="gallery__nav gallery__nav--prev" id="galleryPrev" aria-label="上一张">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <button type="button" class="gallery__nav gallery__nav--next" id="galleryNext" aria-label="下一张">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+            </button>
+            <div class="gallery__dots" id="galleryDots"></div>
+          </div>
+        ) : type === 'video' && video ? (
+          <video
+            class="article-video"
+            controls
+            controlsList="nodownload noremoteplayback"
+            disablepictureinpicture
+            preload="metadata"
+            poster={cover || titlePoster(title, tag)}
+            src={video}
+            oncontextmenu="return false"
+            ondragstart="return false"
+          ></video>
+        ) : cover ? (
+          <>
+            <img src={cover} alt={title} loading="eager" fetchpriority="high" decoding="async" />
+            {type === 'video' && (
+              <span class="cover-btn" aria-label="播放视频">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+              </span>
+            )}
+          </>
+        ) : (
+          <>
+            <div class={`cover-text hero-cover cover-text--${grad}`}>
+              <span class="cover-text__main">{title}</span>
+              <span class="cover-text__sub">{tag} · {dateStr}</span>
+            </div>
+            <span class="cover-btn cover-btn--lg" aria-label={type === 'video' ? '播放视频' : '文章'}>
+              {type === 'video' ? (
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6"/></svg>
+              )}
+            </span>
+          </>
+        )}
+      </div>
+
+      <div class="article-body">
+      <div class="article-tags">
+        {allTags.map((t, i) => (
+          <a class={`article-tag${i === 0 ? ' article-tag--cat' : ' article-tag--alt'}`} href={`/archive/#${i === 0 ? 'cat' : 'tag'}-${encodeURIComponent(t)}`} title={`查看「${t}」`}>{t}</a>
+        ))}
+      </div>
+        <h1 class="article-title">{title}</h1>
+        <div class="article-byline">
+          <img class="work-avatar" src="/avatar.svg" alt={site.user.name} />
+          <span>{site.user.name}</span>
+          <span class="sep">·</span>
+          <span>{category}{type === 'video' ? ' · 视频' : ' · 照片'}</span>
+          <span class="sep">·</span>
+          <span>发布于 {dateStr}</span>
+          {updated && (
+            <>
+              <span class="sep">·</span>
+              <span>更新于 {updated}</span>
+            </>
+          )}
+        </div>
+
+        <div class="md"><Content /></div>
+
+        <div class="article-end">
+          {related.length > 0 && (
+            <div class="related">
+              <h4>更多推荐</h4>
+              <div class="related-grid">
+                {related.map((x) => (
+                  <a class="related-card" href={`/works/${x.id}/`}>
+                    {x.data.cover ? (
+                      <img src={x.data.cover} alt="" loading="lazy" />
+                    ) : (
+                      <span class={`rc-thumb cover-text--${gradOf(x.id)}`}>
+                        {x.data.type === 'video' ? (
+                          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6"/></svg>
+                        )}
+                      </span>
+                    )}
+                    <div>
+                      <div class="rc-title">{x.data.title}</div>
+                      <div class="rc-meta">{getCategory(x)} · {x.data.date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })}{x.data.updated ? ` · 更 ${x.data.updated}` : ''}</div>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+          {site.comments.enabled && (
+            <div class="comments-wrap" id="comments">
+              <h4>评论</h4>
+              <div id="tcomment"></div>
+            </div>
+          )}
+        </div>
+      </div>    </article>
+  </main>
+
+  <!-- 当前文章数据（供底栏分享按钮使用） -->
+  <div id="pageShare" data-title={title} data-cover={cover || ''} data-tag={category} data-date={dateStr + (updated ? ` · 更新 ${updated}` : '')} data-slug={work.id} hidden></div>
+
+  {toc.length > 0 && (
+    <div class="toc-panel" id="tocPanel" hidden>
+      <div class="toc-panel__header">
+        <span class="toc-panel__title">文章目录</span>
+        <button type="button" class="toc-panel__close" id="tocPanelClose" aria-label="关闭目录">×</button>
+      </div>
+      <nav>
+        {toc.map((h) => (
+          <a data-d={h.depth} data-t={h.text}>{h.text}</a>
+        ))}
+      </nav>
+    </div>
+  )}
+
+  <script>
+    // 目录集成在底栏：点击「目录」按钮展开/折叠面板，宽度与底栏一致
+    const tocBtn = document.getElementById('tocBtn');
+    const tocSep = document.getElementById('tocSep');
+    const tocPanel = document.getElementById('tocPanel');
+    const tocPanelClose = document.getElementById('tocPanelClose');
+    const tabbar = document.querySelector('.tabbar');
+
+    // 有目录的文章才显示底栏目录按钮，并同步面板宽度
+    function syncToc() {
+      if (!tocPanel) return; // 无目录：按钮保持隐藏
+      if (tocBtn) tocBtn.hidden = false;
+      if (tocSep) tocSep.hidden = false;
+      if (tabbar) tocPanel.style.width = tabbar.offsetWidth + 'px';
+    }
+    window.addEventListener('resize', syncToc);
+    syncToc();
+
+    function openToc() {
+      if (!tocPanel) return;
+      if (tabbar) tocPanel.style.width = tabbar.offsetWidth + 'px';
+      // 与设置面板互斥：打开目录时收起设置
+      const sp = document.getElementById('settingsPanel');
+      if (sp) window.forceClosePanel(sp);
+      window.openPanel(tocPanel);
+    }
+    function closeToc() { window.closePanel(tocPanel); }
+    window.openToc = openToc;
+    window.closeToc = closeToc;
+    // 可折叠：再次点击底栏目录按钮收起
+    tocBtn?.addEventListener('click', () => {
+      (tocPanel?.hidden || tocPanel?.classList.contains('out')) ? openToc() : closeToc();
+    });
+    tocPanelClose?.addEventListener('click', closeToc);
+
+    // 目录面板：按住标题栏可拖拽移动
+    const tocHeader = tocPanel ? tocPanel.querySelector('.toc-panel__header') : null;
+    if (tocPanel && tocHeader) {
+      let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
+      function getPos(e) {
+        // touch 事件的坐标在 e.touches[0]，直接用 e.clientX 会是 undefined（导致 NaN 错位）
+        return e.touches && e.touches[0] ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : { x: e.clientX, y: e.clientY };
+      }
+      function startDrag(e) {
+        // 关闭按钮不参与拖拽（避免 touchstart 的 preventDefault 吞掉点击）
+        if (e.target.closest('.toc-panel__close')) return;
+        dragging = true;
+        const p = getPos(e);
+        sx = p.x; sy = p.y;
+        const r = tocPanel.getBoundingClientRect();
+        ox = r.left; oy = r.top;
+        e.preventDefault();
+      }
+      function onMove(e) {
+        if (!dragging) return;
+        const p = getPos(e);
+        if (p.x == null || p.y == null) return;
+        tocPanel.style.transform = 'none';
+        tocPanel.style.bottom = 'auto';
+        // 边界保护：面板不能完全拖出屏幕（否则会"消失点不出来"）
+        const pw = tocPanel.offsetWidth, ph = tocPanel.offsetHeight;
+        const vw = window.innerWidth, vh = window.innerHeight;
+        const nx = Math.min(Math.max(ox + p.x - sx, 8), vw - pw - 8);
+        const ny = Math.min(Math.max(oy + p.y - sy, 8), vh - ph - 8);
+        tocPanel.style.left = nx + 'px';
+        tocPanel.style.top = ny + 'px';
+      }
+      function endDrag() { dragging = false; }
+      tocHeader.addEventListener('mousedown', startDrag);
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', endDrag);
+      tocHeader.addEventListener('touchstart', startDrag, { passive: false });
+      document.addEventListener('touchmove', onMove, { passive: false });
+      document.addEventListener('touchend', endDrag);
+    }
+
+    // 视频播放器：按视频真实比例适配（横屏 16:9 全宽 / 竖屏窄条居中），避免黑边
+    const articleVideo = document.querySelector('video.article-video');
+    if (articleVideo) {
+      articleVideo.addEventListener('loadedmetadata', () => {
+        const w = articleVideo.videoWidth;
+        const h = articleVideo.videoHeight;
+        if (!w || !h) return;
+        const portrait = h > w;
+        articleVideo.style.aspectRatio = `${w} / ${h}`;
+        if (portrait) {
+          articleVideo.style.maxHeight = '72vh';
+          articleVideo.style.margin = '0 auto';
+        } else {
+          articleVideo.style.maxHeight = 'none';
+          articleVideo.style.margin = '';
+        }
+      });
+    }
+
+    // 图集轮播（小红书式左右滑动）：scroll-snap + 箭头 + 圆点指示器
+    const gallery = document.getElementById('gallery');
+    if (gallery) {
+      const gTrack = gallery.querySelector('.gallery__track');
+      const gSlides = gallery.querySelectorAll('.gallery__slide');
+      const dotsWrap = document.getElementById('galleryDots');
+      // 统一比例：以第一张图为基准定容器比例，其余图 contain 完整显示（留白为白边）
+      const firstImg = gSlides[0] ? gSlides[0].querySelector('img') : null;
+      if (firstImg) {
+        const setRatio = () => {
+          if (firstImg.naturalWidth && firstImg.naturalHeight) {
+            gSlides[0].style.aspectRatio = firstImg.naturalWidth + '/' + firstImg.naturalHeight;
+          }
+        };
+        if (firstImg.complete) setRatio();
+        else firstImg.addEventListener('load', setRatio, { once: true });
+      }
+      let gIdx = 0;
+      const setDot = () => {
+        dotsWrap.querySelectorAll('.gallery__dot').forEach((d, j) => d.classList.toggle('gallery__dot--active', j === gIdx));
+      };
+      const goTo = (i) => {
+        gIdx = Math.min(Math.max(i, 0), gSlides.length - 1);
+        gTrack.scrollTo({ left: gSlides[gIdx].offsetLeft, behavior: 'smooth' });
+      };
+      if (dotsWrap) {
+        gSlides.forEach((_, i) => {
+          const d = document.createElement('button');
+          d.type = 'button';
+          d.className = 'gallery__dot';
+          d.setAttribute('aria-label', '第' + (i + 1) + '张');
+          d.addEventListener('click', () => goTo(i));
+          dotsWrap.appendChild(d);
+        });
+        setDot();
+      }
+      document.getElementById('galleryPrev')?.addEventListener('click', () => goTo(gIdx - 1));
+      document.getElementById('galleryNext')?.addEventListener('click', () => goTo(gIdx + 1));
+      // 触摸/滚轮滑动后同步圆点
+      gTrack.addEventListener('scroll', () => {
+        const i = Math.round(gTrack.scrollLeft / gTrack.clientWidth);
+        if (i !== gIdx) { gIdx = i; setDot(); }
+      });
+    }
+
+    // 目录链接：按标题文本匹配滚动，向上偏移避开悬浮导航
+    document.addEventListener('click', (e) => {
+      const el = e.target.closest('[data-t]');
+      if (!el) return;
+      const text = el.dataset.t;
+      const heads = [...document.querySelectorAll('.md h2, .md h3')];
+      const target = heads.find((h) => h.textContent.trim() === text);
+      if (target) {
+        const y = target.getBoundingClientRect().top + window.scrollY - 84;
+        window.scrollTo({ top: Math.max(y, 0), behavior: 'smooth' });
+      }
+    });
+  </script>
+</BaseLayout>

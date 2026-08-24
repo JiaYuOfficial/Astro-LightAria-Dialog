@@ -1,0 +1,18 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { site } from '../config/site';
+
+// 分类页已合并进归档页（/archive/?view=cat），此处保留旧入口自动跳转
+---
+
+<BaseLayout title={`分类 · ${site.brand}`}>
+  <main class="archive-wrap">
+    <div class="archive-card">
+      <h1 class="archive-title">分类</h1>
+      <p class="archive-count">分类页已合并进归档页，正在跳转…</p>
+    </div>
+  </main>
+  <script is:inline>
+    location.replace('/archive/?view=cat' + location.hash);
+  </script>
+</BaseLayout>

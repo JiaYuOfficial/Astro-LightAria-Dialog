@@ -1,0 +1,16 @@
+{
+  "name": "lightaria",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LightAria 光影咏叹调 · 摄影作品集（Astro 静态博客，光与影的对白）",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build && bash backup.sh",
+    "preview": "astro preview",
+    "backup": "bash backup.sh"
+  },
+  "dependencies": {
+    "astro": "^7.2.4"
+  }
+}

@@ -1,0 +1,64 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import WorkCard from '../components/WorkCard.astro';
+import { getCollection } from 'astro:content';
+import { site } from '../config/site';
+import { getCategory } from '../lib/work';
+
+const works = (await getCollection('works')).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+---
+
+<BaseLayout title={site.title}>
+  <main class="feed-wrap">
+    <div class="masonry" id="feed">
+      {works.map((w, i) => (
+        <div
+          class="feed-item"
+          data-cat={getCategory(w)}
+          data-title={(w.data.title + getCategory(w)).toLowerCase()}
+        >
+          <WorkCard work={w} index={i} />
+        </div>
+      ))}
+    </div>
+    <div class="empty" id="empty" hidden>没有匹配的案例喵～换个关键词试试？</div>
+  </main>
+
+  <script>
+    // 分类筛选 + 搜索（标签面板与弹出搜索框由 BaseLayout 渲染）
+    const tagOpts = document.querySelectorAll('#tagPanel .tag-opt');
+    const items = document.querySelectorAll('.feed-item');
+    const search = document.getElementById('search');
+    const empty = document.getElementById('empty');
+    let activeTag = '全部';
+    let keyword = '';
+
+    function apply() {
+      const kw = keyword.trim().toLowerCase();
+      let shown = 0;
+      items.forEach((el) => {
+        const okTag = activeTag === '全部' || el.dataset.cat === activeTag;
+        const okKw = !kw || (el.dataset.title || '').includes(kw);
+        const show = okTag && okKw;
+        el.hidden = !show;
+        if (show) shown++;
+      });
+      empty.hidden = shown > 0;
+    }
+
+    tagOpts.forEach((t) =>
+      t.addEventListener('click', () => {
+        tagOpts.forEach((x) => x.classList.remove('tag-opt--active'));
+        t.classList.add('tag-opt--active');
+        activeTag = t.dataset.tag;
+        apply();
+      })
+    );
+    search?.addEventListener('input', (e) => {
+      keyword = e.target.value;
+      apply();
+    });
+  </script>
+</BaseLayout>

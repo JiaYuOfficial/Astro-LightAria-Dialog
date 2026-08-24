@@ -1,0 +1,17 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ErrorPage from '../components/ErrorPage.astro';
+import { site } from '../config/site';
+---
+
+<BaseLayout title={`404 · 页面不存在`}>
+  <main class="nf-wrap">
+    <div class="nf-card">
+      <ErrorPage
+        code="404"
+        title="页面不存在"
+        desc="你访问的页面可能被移动、改名，或从未存在过。"
+      />
+    </div>
+  </main>
+</BaseLayout>

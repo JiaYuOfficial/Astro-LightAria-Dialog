@@ -1,0 +1,836 @@
+---
+import '../styles/global.css';
+import { getCollection } from 'astro:content';
+import { site } from '../config/site';
+import { getCategory } from '../lib/work';
+
+interface Props {
+  title?: string;
+}
+const { title = site.title } = Astro.props;
+// 首页时不显示底栏「返回主页」
+const isHome = Astro.url.pathname === '/' || Astro.url.pathname.endsWith('/index.html');
+
+// 分类列表：由文章内容自动生成（首页顶栏用）
+const works = await getCollection('works');
+const tags = ['全部', ...new Set(works.map((w) => getCategory(w)))];
+
+// 由主强调色派生色系变体（hex → rgba）
+function hexToRgba(hex: string, alpha: number) {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+const accent = site.theme.accent;
+const accentSoft = hexToRgba(accent, 0.28);
+const accentBorder = hexToRgba(accent, 0.55);
+
+// 生成主题 CSS（注入全局 :root，避免 define:vars 作用域问题）
+const themeCss = `
+:root {
+  --lg-accent: ${accentSoft};
+  --lg-accent-border: ${accentBorder};
+  --lg-accent-solid: ${accent};
+  --bg-dim: ${site.bgDim ?? 0.55};
+  ${site.background ? `--bg-img: url("${site.background}");` : ''}
+}
+`;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <meta name="description" content={site.description} />
+    <meta name="robots" content="index,follow" />
+    <!-- 站点色系：由 src/config/site.ts 的 theme.accent 派生 -->
+    <style is:global set:html={themeCss}></style>
+    <!-- 性能：预连接媒体域名，减少握手延迟 -->
+
+  </head>
+  <body class={site.showBackground && site.background ? 'has-bg' : ''} data-layout-desktop={site.layoutDesktop} data-layout-mobile={site.layoutMobile} data-default-style={site.style} data-default-bg={site.showBackground} data-default-blur={site.glassBlur} data-default-bgdim={site.bgDim ?? 0.55} data-default-font={site.mdFontSize}>
+    {site.comments.enabled && (
+      <script is:inline define:vars={{ commentsCfg: site.comments }}>
+        window.__COMMENTS__ = commentsCfg;
+      </script>
+    )}
+    {site.share?.enabled && (
+      <script is:inline define:vars={{ shareCfg: site.share }}>
+        window.__SHARE_CFG__ = shareCfg;
+      </script>
+    )}
+    {(site.user?.name || site.user?.avatar) && (
+      <script is:inline define:vars={{ userCfg: site.user }}>
+        window.__USER__ = userCfg;
+      </script>
+    )}
+    <!-- 顶部导航：品牌 + 操作按钮（分类 / 归档 / 搜索） -->
+    <nav class="lg-nav">
+      <a class="lg-nav__brand" href="/">{site.brand}{site.subtitle && <small>{site.subtitle}</small>}</a>
+
+      <div class="lg-nav__actions">
+        {site.pages.moments && (
+          <a class="lg-search-btn" href="/moments/" aria-label="动态" title="动态">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/></svg>
+          </a>
+        )}
+        {site.pages.archive && (
+          <a class="lg-search-btn" href="/archive/" aria-label="归档" title="归档">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          </a>
+        )}
+        {site.pages.friends && (
+          <a class="lg-search-btn" href="/friends/" aria-label="友情链接" title="友情链接">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          </a>
+        )}
+        {site.pages.about && (
+          <a class="lg-search-btn" href="/about/" aria-label="个人主页" title="个人主页">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </a>
+        )}
+        <button type="button" class="lg-search-btn" id="searchBtn" aria-label="搜索">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        </button>
+      </div>
+    </nav>
+
+    <div class="search-pop" id="searchPop" hidden>
+      <input class="lg-input" id="search" type="search" placeholder="搜索案例，如：婚礼 / 人像 / 活动" />
+      <button type="button" class="search-pop__close" id="searchClose" aria-label="关闭搜索">×</button>
+    </div>
+
+    <slot />
+
+    <div class="foot">
+      <span>{site.footer.text || site.brand}</span>
+      {site.footer.icp && (
+        <a class="foot-icp" href="https://beian.miit.gov.cn/" target="_blank" rel="nofollow">{site.footer.icp}</a>
+      )}
+    </div>
+
+    <!-- 底部 TAB 栏（液态玻璃，常驻） -->
+    <div class="tabbar">
+      {!isHome && (
+        <>
+          <a class="tabbar-item" href="/" aria-label="返回主页">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+            <span>返回主页</span>
+          </a>
+          <span class="tabbar-sep"></span>
+          <button type="button" class="tabbar-item" id="backBtn" aria-label="返回上一页">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M20 20v-7a4 4 0 0 0-4-4H8.5"/></svg>
+            <span>返回上一页</span>
+          </button>
+          <span class="tabbar-sep"></span>
+        </>
+      )}
+      {isHome && (
+        <>
+          <button type="button" class="tabbar-item" id="tagBtn" aria-label="分类筛选">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.83z"/><circle cx="7" cy="7" r="1.5"/></svg>
+            <span>分类</span>
+          </button>
+          <span class="tabbar-sep"></span>
+        </>
+      )}
+      <button type="button" class="tabbar-item" id="tocBtn" aria-label="文章目录" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        <span>目录</span>
+      </button>
+      <span class="tabbar-sep" id="tocSep" hidden></span>
+      <button type="button" class="tabbar-item" id="settingsBtn" aria-label="显示设置">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>设置</span>
+      </button>
+      <span class="tabbar-sep"></span>
+      {!isHome && (
+        <>
+          <button type="button" class="tabbar-item" id="shareBtn" aria-label="生成分享卡片">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>
+            <span>分享</span>
+          </button>
+          <span class="tabbar-sep"></span>
+        </>
+      )}
+      <button type="button" class="tabbar-item" id="toTop" aria-label="回到顶部">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
+        <span>回到顶部</span>
+      </button>
+    </div>
+
+    <!-- 标签面板（主页底栏「标签」弹出，分类筛选） -->
+    <div class="tag-panel" id="tagPanel" hidden>
+      {tags.map((t) => (
+        <button type="button" class={`tag-opt${t === '全部' ? ' tag-opt--active' : ''}`} data-tag={t}>{t}</button>
+      ))}
+    </div>
+
+    <!-- 设置面板（布局切换） -->
+    <div class="settings-panel" id="settingsPanel" hidden>
+      <div class="settings-panel__header">
+        <span class="settings-panel__title">显示设置</span>
+        <button type="button" class="settings-panel__close" id="settingsClose" aria-label="关闭设置">×</button>
+      </div>
+      <div class="layout-options">
+        <button type="button" class="layout-opt" data-layout="masonry">网格</button>
+        <button type="button" class="layout-opt" data-layout="list">列表</button>
+        <button type="button" class="layout-opt" data-layout="compact">简洁</button>
+      </div>
+      <div class="settings-sep"></div>
+      <div class="layout-options">
+        <button type="button" class="layout-opt" data-style="glass">液态玻璃</button>
+        <button type="button" class="layout-opt" data-style="flat">扁平</button>
+      </div>
+      <div class="settings-sep"></div>
+      <div class="layout-options">
+        <button type="button" class="layout-opt" data-bg="on">显示背景图</button>
+        <button type="button" class="layout-opt" data-bg="off">隐藏背景图</button>
+      </div>
+      <div class="settings-sep"></div>
+      <div class="blur-row">
+        <span class="blur-label">玻璃模糊度</span>
+        <input type="range" id="blurRange" min="0" max="30" step="1" aria-label="玻璃模糊度" />
+      </div>
+      <div class="blur-row">
+        <span class="blur-label">背景亮度</span>
+        <input type="range" id="bgDimRange" min="0" max="100" step="5" aria-label="背景亮度" />
+      </div>
+      <div class="blur-row">
+        <span class="blur-label">正文字号</span>
+        <input type="range" id="fontRange" min="14" max="22" step="1" aria-label="正文字号" />
+      </div>
+    </div>
+
+    <!-- 分享卡片弹层（保存分享图 + 快速分享） -->
+    <div class="share-modal" id="shareModal" hidden>
+      <div class="share-modal__inner">
+        <button type="button" class="share-modal__close" id="shareModalClose" aria-label="关闭">×</button>
+        <img class="share-modal__img" id="shareImg" alt="分享卡片" />
+        <div class="share-modal__actions">
+          <button type="button" class="lg-btn" id="shareWechat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+            <span>分享</span>
+          </button>
+          <a class="lg-btn lg-btn--primary" id="shareDownload" href="#" download="share-card.png">保存图片</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 轻提示 toast -->
+    <div class="toast" id="toast" role="status"></div>
+
+    <!-- 图片灯箱（点击正文/封面图片放大，支持多图预览） -->
+    <div class="lightbox" id="lightbox" hidden>
+      <img class="lightbox__img" id="lightboxImg" alt="" />
+      <button type="button" class="lightbox__close" id="lightboxClose" aria-label="关闭">×</button>
+      <button type="button" class="lightbox__prev" id="lightboxPrev" aria-label="上一张">‹</button>
+      <button type="button" class="lightbox__next" id="lightboxNext" aria-label="下一张">›</button>
+      <div class="lightbox__thumbs" id="lightboxThumbs"></div>
+    </div>
+
+    <script src="/vendor/qrcode-core.js" is:inline></script>
+    <script src="/vendor/qrcode-utf8.js" is:inline></script>
+
+    <script>
+      // 搜索框：点图标弹出 / 关闭（关闭时清空筛选）
+      const searchBtn = document.getElementById('searchBtn');
+      const searchPop = document.getElementById('searchPop');
+      const searchInput = document.getElementById('search');
+      const searchClose = document.getElementById('searchClose');
+
+      // 通用面板动画：open 立即显示 + 入场动画；close 播退场动画后隐藏
+      window.openPanel = function (el) {
+        if (!el) return;
+        el.hidden = false;
+        el.classList.remove('out');
+      };
+      window.forceClosePanel = function (el) {
+        if (!el) return;
+        el.hidden = true;
+        el.classList.remove('out');
+      };
+      window.closePanel = function (el, done) {
+        if (!el) return;
+        if (el.hidden) { done && done(); return; }
+        el.classList.add('out');
+        const finish = () => { el.hidden = true; el.classList.remove('out'); done && done(); };
+        el.addEventListener('animationend', (e) => { if (e.target === el) finish(); }, { once: true });
+        setTimeout(() => { if (el.classList.contains('out')) finish(); }, 450);
+      };
+
+      function openSearch() {
+        if (!searchPop) return;
+        window.openPanel(searchPop);
+        searchInput?.focus();
+      }
+      function closeSearch() {
+        if (!searchPop) return;
+        if (searchInput && searchInput.value) {
+          searchInput.value = '';
+          searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        window.closePanel(searchPop);
+      }
+
+      // 评论系统（全站：页面存在 #tcomment 或 #tcomment-* 容器即初始化，配置见 site.ts comments）
+      // 多个容器 = 多个评论线程（如动态页每条动态独立评论，data-path 区分）
+      // hidden 容器不自动初始化，由 window.ensureComments(el) 按需加载（点击评论按钮时）
+      if (window.__COMMENTS__) {
+        (function () {
+          var cfg = window.__COMMENTS__;
+          if (!cfg.serverURL) return;
+          var cdnLoaded = false;
+          function loadCdn(done) {
+            if (cdnLoaded || (window.twikoo && cfg.service === 'twikoo') || (window.Waline && cfg.service === 'waline') || (window.Artalk && cfg.service === 'artalk')) {
+              done();
+              return;
+            }
+            var s = document.createElement('script');
+            s.src = cfg.cdn;
+            s.async = true;
+            s.onload = done;
+            s.onerror = done;
+            document.body.appendChild(s);
+            cdnLoaded = true;
+          }
+          function initOne(el) {
+            var path = el.getAttribute('data-path') || location.pathname;
+            // Twikoo 会替换传入的 el 元素本身，因此挂载到容器内的 .tk-mount 子元素，
+            // 外层容器保持可控（展开/收起）
+            var mount = el.querySelector('.tk-mount') || el;
+            if (cfg.service === 'twikoo' && window.twikoo) {
+              twikoo.init({ envId: cfg.serverURL, el: '#' + mount.id, path: path, lang: cfg.lang });
+            } else if (cfg.service === 'waline' && window.Waline) {
+              new Waline({ el: '#' + mount.id, serverURL: cfg.serverURL, lang: cfg.lang });
+            } else if (cfg.service === 'artalk' && window.Artalk) {
+              Artalk.init({ el: '#' + mount.id, server: cfg.serverURL, lang: cfg.lang });
+            }
+          }
+          window.ensureComments = function (el) {
+            if (!el || !el.id || el.dataset.loaded) return;
+            el.dataset.loaded = '1';
+            loadCdn(function () { initOne(el); });
+          };
+          // 页面加载时：只初始化可见容器（文章页评论区等），hidden 容器等点击再加载
+          var visible = Array.from(document.querySelectorAll('[id^="tcomment"]')).filter(function (el) {
+            return !el.hidden && el.getBoundingClientRect().width > 0;
+          });
+          if (visible.length) {
+            loadCdn(function () { visible.forEach(initOne); });
+          } else {
+            loadCdn(function () {}); // 预加载 CDN，动态页点击评论时秒开不卡
+          }
+        })();
+      }
+      searchBtn?.addEventListener('click', () => {
+        (searchPop.hidden || searchPop.classList.contains('out')) ? openSearch() : closeSearch();
+      });
+      searchClose?.addEventListener('click', closeSearch);
+
+      // 标签面板（主页底栏「分类」）：开时收起设置/目录
+      const tagBtn = document.getElementById('tagBtn');
+      const tagPanel = document.getElementById('tagPanel');
+      tagBtn?.addEventListener('click', () => {
+        if (tagPanel.hidden || tagPanel.classList.contains('out')) {
+          window.forceClosePanel(document.getElementById('settingsPanel'));
+          window.forceClosePanel(document.getElementById('tocPanel'));
+          window.openPanel(tagPanel);
+        } else {
+          window.closePanel(tagPanel);
+        }
+      });
+      // 点击面板以外的空白处关闭分类面板
+      document.addEventListener('click', (e) => {
+        if (tagPanel.hidden || tagPanel.classList.contains('out')) return;
+        if (e.target.closest('#tagPanel, #tagBtn')) return;
+        window.closePanel(tagPanel);
+      });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') window.closePanel(tagPanel); });
+
+      // 回到顶部
+      document.getElementById('toTop')?.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+
+      // 返回上一页（无历史记录时回主页）
+      document.getElementById('backBtn')?.addEventListener('click', () => {
+        if (window.history.length > 1) window.history.back();
+        else window.location.href = '/';
+      });
+
+      // 设置面板：布局切换（网格/列表），localStorage 记住，默认取 site.ts 配置
+      const settingsBtn = document.getElementById('settingsBtn');
+      const settingsPanel = document.getElementById('settingsPanel');
+      const settingsClose = document.getElementById('settingsClose');
+      const LAYOUT_KEY = 'photo-blog-layout';
+      const STYLE_KEY = 'photo-blog-style';
+      const BG_KEY = 'photo-blog-bg';
+      const BLUR_KEY = 'photo-blog-blur';
+
+      // 网格模式入场顺序：按视觉从上到下重排（columns 瀑布流 DOM 顺序是列优先，视觉会乱）
+      // 初始卡片动画处于暂停态（CSS 控制），布局稳定后通过 feed-anim 只触发一次播放，避免「卡两下」
+      function orderMasonryByTop() {
+        if (!document.body.classList.contains('layout-masonry')) return;
+        const cards = Array.from(document.querySelectorAll('body.layout-masonry .work-card'));
+        if (!cards.length) return;
+        const sorted = cards
+          .map((el) => ({ el, top: el.getBoundingClientRect().top }))
+          .sort((a, b) => a.top - b.top);
+        sorted.forEach((it, i) => { it.el.style.animationDelay = i * 40 + 'ms'; });
+        document.body.classList.remove('feed-anim');
+        void document.body.offsetWidth;
+        document.body.classList.add('feed-anim');
+      }
+      // 载入：等待布局稳定（load + 超时兜底）后触发一次播放
+      (function tryStartMasonry() {
+        if (!document.body.classList.contains('layout-masonry')) return;
+        if (document.readyState === 'complete') { requestAnimationFrame(orderMasonryByTop); return; }
+        let started = false;
+        const go = () => { if (!started) { started = true; requestAnimationFrame(orderMasonryByTop); } };
+        window.addEventListener('load', go);
+        setTimeout(go, 800); // 兜底：资源慢时 800ms 后也播放，避免永久空白
+      })();
+
+      // 样式/布局切换：信息流淡入过渡
+      function pulseFeed() {
+        const feed = document.querySelector('.feed-wrap, .archive-card');
+        if (!feed) return;
+        feed.classList.remove('layout-switch');
+        void feed.offsetWidth;
+        feed.classList.add('layout-switch');
+      }
+      function applyLayout(l) {
+        document.body.classList.remove('layout-masonry', 'layout-list', 'layout-compact');
+        document.body.classList.add('layout-' + l);
+        localStorage.setItem(LAYOUT_KEY, l);
+        document.querySelectorAll('[data-layout]').forEach((b) => {
+          b.classList.toggle('layout-opt--active', b.dataset.layout === l);
+        });
+        pulseFeed();
+        if (l === 'masonry') setTimeout(orderMasonryByTop, 120);
+      }
+      function applyStyle(s) {
+        document.body.classList.remove('style-glass', 'style-flat');
+        document.body.classList.add('style-' + s);
+        localStorage.setItem(STYLE_KEY, s);
+        document.querySelectorAll('[data-style]').forEach((b) => {
+          b.classList.toggle('layout-opt--active', b.dataset.style === s);
+        });
+        pulseFeed();
+      }
+      function applyBg(on) {
+        document.body.classList.toggle('has-bg', on);
+        localStorage.setItem(BG_KEY, on ? 'on' : 'off');
+        document.querySelectorAll('[data-bg]').forEach((b) => {
+          b.classList.toggle('layout-opt--active', (b.dataset.bg === 'on') === on);
+        });
+      }
+      // 初始：本地记忆优先，否则按设备宽度选配置默认（电脑/手机可分开设置）
+      const isMobileVw = () => window.innerWidth <= 880;
+      const defLayout = (isMobileVw() ? document.body.dataset.layoutMobile : document.body.dataset.layoutDesktop) || 'masonry';
+      const defStyle = document.body.dataset.defaultStyle || 'glass';
+      const defBg = document.body.dataset.defaultBg === 'true';
+      const defBlur = document.body.dataset.defaultBlur || '16';
+      applyLayout(localStorage.getItem(LAYOUT_KEY) || defLayout);
+      applyStyle(localStorage.getItem(STYLE_KEY) || defStyle);
+      applyBg(localStorage.getItem(BG_KEY) ? localStorage.getItem(BG_KEY) === 'on' : defBg);
+
+      // 玻璃模糊度滑杆
+      const blurRange = document.getElementById('blurRange');
+      function applyBlur(v) {
+        document.documentElement.style.setProperty('--lg-blur', v + 'px');
+        if (blurRange) blurRange.value = v;
+        localStorage.setItem(BLUR_KEY, v);
+      }
+      applyBlur(localStorage.getItem(BLUR_KEY) || defBlur);
+      blurRange?.addEventListener('input', () => applyBlur(blurRange.value));
+
+      // 背景亮度滑杆（100% = 不压暗最亮，0 = 全黑；内部转压暗强度 dim = (100-p)/100）
+      const BG_DIM_KEY = 'photo-blog-bgdim';
+      const bgDimRange = document.getElementById('bgDimRange');
+      function applyBgDim(p) {
+        const dim = Math.max(0, Math.min(1, (100 - p) / 100));
+        document.documentElement.style.setProperty('--bg-dim', String(dim));
+        if (bgDimRange) bgDimRange.value = p;
+        localStorage.setItem(BG_DIM_KEY, p);
+      }
+      const defBgDim = parseFloat(document.body.dataset.defaultBgdim || '0.55');
+      const defBgDimPct = Math.round((1 - Math.max(0, Math.min(1, defBgDim))) * 100);
+      applyBgDim(parseInt(localStorage.getItem(BG_DIM_KEY), 10) || defBgDimPct);
+      bgDimRange?.addEventListener('input', () => applyBgDim(bgDimRange.value));
+
+      // 正文字号滑杆
+      const fontRange = document.getElementById('fontRange');
+      const FONT_KEY = 'photo-blog-font';
+      function applyFont(v) {
+        document.documentElement.style.setProperty('--md-font-size', v + 'px');
+        if (fontRange) fontRange.value = v;
+        localStorage.setItem(FONT_KEY, v);
+      }
+      const defFont = document.body.dataset.defaultFont || '17';
+      applyFont(localStorage.getItem(FONT_KEY) || defFont);
+      fontRange?.addEventListener('input', () => applyFont(fontRange.value));
+
+      // 性能：正文图片懒加载（避免整页图同时下载）+ 加载完成淡入（消除闪白）
+      document.querySelectorAll('.md img').forEach((im) => {
+        if (!im.loading) im.loading = 'lazy';
+        im.addEventListener('load', () => im.classList.add('loaded'), { once: true });
+        if (im.complete && im.naturalWidth) im.classList.add('loaded');
+      });
+      // 首页信息流封面图：加载完成淡入（消除滚动懒加载时的闪动）
+      document.querySelectorAll('.work-cover img').forEach((im) => {
+        im.addEventListener('load', () => im.classList.add('loaded'), { once: true });
+        if (im.complete && im.naturalWidth) im.classList.add('loaded');
+      });
+
+      // 图片灯箱：点击正文/封面图片放大（支持多图 + 缩略图预览）
+      const lightbox = document.getElementById('lightbox');
+      const lightboxImg = document.getElementById('lightboxImg');
+      const lightboxClose = document.getElementById('lightboxClose');
+      const lightboxPrev = document.getElementById('lightboxPrev');
+      const lightboxNext = document.getElementById('lightboxNext');
+      const lightboxThumbs = document.getElementById('lightboxThumbs');
+      let lbImages = [], lbIndex = 0;
+      function collectImages() {
+        return Array.from(document.querySelectorAll('.md img, .article-hero img, .moment-img'));
+      }
+      function renderLightbox() {
+        const img = lbImages[lbIndex];
+        if (!img) return;
+        // 切图淡入：先淡出 → 换图 → 淡入
+        lightboxImg.style.opacity = '0';
+        setTimeout(() => {
+          lightboxImg.src = img.currentSrc || img.src;
+          lightboxImg.alt = img.alt || '';
+          lightboxImg.style.opacity = '1';
+        }, 130);
+        const many = lbImages.length > 1;
+        lightboxPrev.style.display = many ? '' : 'none';
+        lightboxNext.style.display = many ? '' : 'none';
+        lightboxThumbs.style.display = many ? '' : 'none';
+        lightboxThumbs.innerHTML = '';
+        lbImages.forEach((im, i) => {
+          const t = document.createElement('img');
+          t.loading = 'lazy';
+          t.decoding = 'async';
+          t.src = im.currentSrc || im.src;
+          t.alt = im.alt || '';
+          t.className = 'lightbox__thumb' + (i === lbIndex ? ' lightbox__thumb--active' : '');
+          t.addEventListener('click', () => { lbIndex = i; renderLightbox(); });
+          lightboxThumbs.appendChild(t);
+        });
+      }
+      function openLightboxAt(index) {
+        lbImages = collectImages();
+        if (!lbImages.length) return;
+        lbIndex = Math.max(0, Math.min(index, lbImages.length - 1));
+        renderLightbox();
+        window.openPanel(lightbox);
+      }
+      function stepLightbox(d) {
+        if (!lbImages.length) return;
+        lbIndex = (lbIndex + d + lbImages.length) % lbImages.length;
+        renderLightbox();
+      }
+      document.addEventListener('click', (e) => {
+        const img = e.target.closest('.md img, .article-hero img, .moment-img');
+        if (!img) return;
+        openLightboxAt(collectImages().indexOf(img));
+      });
+      lightboxClose?.addEventListener('click', () => { window.closePanel(lightbox); });
+      lightboxPrev?.addEventListener('click', () => stepLightbox(-1));
+      lightboxNext?.addEventListener('click', () => stepLightbox(1));
+      lightbox?.addEventListener('click', (e) => { if (e.target === lightbox) window.closePanel(lightbox); });
+      document.addEventListener('keydown', (e) => {
+        if (lightbox.hidden) return;
+        if (e.key === 'ArrowLeft') stepLightbox(-1);
+        if (e.key === 'ArrowRight') stepLightbox(1);
+        if (e.key === 'Escape') window.closePanel(lightbox);
+      });
+
+      settingsBtn?.addEventListener('click', () => {
+        if (settingsPanel.hidden || settingsPanel.classList.contains('out')) {
+          // 与目录面板互斥：打开设置时收起目录
+          const tp = document.getElementById('tocPanel');
+          if (tp) window.forceClosePanel(tp);
+          window.openPanel(settingsPanel);
+        } else {
+          window.closePanel(settingsPanel);
+        }
+      });
+      settingsClose?.addEventListener('click', () => { window.closePanel(settingsPanel); });
+      document.querySelectorAll('.layout-opt').forEach((b) =>
+        b.addEventListener('click', () => {
+          if (b.dataset.layout) applyLayout(b.dataset.layout);
+          if (b.dataset.style) applyStyle(b.dataset.style);
+          if (b.dataset.bg) applyBg(b.dataset.bg === 'on');
+        })
+      );
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { window.closePanel(settingsPanel); } });
+
+      // ---------- 分享卡片（封面 + 标题 + 二维码，canvas 生成 PNG） ----------
+      const shareModal = document.getElementById('shareModal');
+      const shareImg = document.getElementById('shareImg');
+      const shareDownload = document.getElementById('shareDownload');
+      const shareModalClose = document.getElementById('shareModalClose');
+      const SHARE_GRADS = [
+        ['#ff9a8b', '#ff6a88'], ['#a18cd1', '#fbc2eb'], ['#84fab0', '#8fd3f4'],
+        ['#f6d365', '#fda085'], ['#667eea', '#764ba2'],
+      ];
+      function shareGrad(s) {
+        let n = 0;
+        for (const ch of String(s)) n += ch.codePointAt(0);
+        return n % 5;
+      }
+      function shareWrap(ctx, text, maxWidth) {
+        const lines = []; let line = '';
+        for (const ch of String(text)) {
+          const test = line + ch;
+          if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = ch; }
+          else { line = test; }
+        }
+        if (line) lines.push(line);
+        return lines;
+      }
+      // 分享卡片用户信息（site.ts user 配置）：封面底部信息压条的头像与昵称
+      const USER = window.__USER__ || {};
+      const AVATAR_IMG = (() => {
+        if (!USER.avatar) return null;
+        const i = new Image();
+        i.crossOrigin = 'anonymous';
+        i.src = USER.avatar;
+        return i;
+      })();
+      function drawShareCard(title, tag, dateLine, cover, url, done) {
+        const W = 480, H = 640, coverH = 400;
+        const [c1, c2] = SHARE_GRADS[shareGrad(title)];
+        const canvas = document.createElement('canvas');
+        canvas.width = W; canvas.height = H;
+        const ctx = canvas.getContext('2d');
+        const grad = ctx.createLinearGradient(0, 0, W, H);
+        grad.addColorStop(0, c1); grad.addColorStop(1, c2);
+        ctx.fillStyle = grad; ctx.fillRect(0, 0, W, coverH);
+        const finish = () => done(canvas.toDataURL('image/png'));
+        const tasks = [];
+        // 封面底部信息压条（头像 + 昵称）
+        const drawAvatar = (img) => {
+          const ay = coverH - 27;
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(34 + 16, ay, 16, 0, Math.PI * 2);
+          ctx.closePath();
+          ctx.clip();
+          ctx.drawImage(img, 34, ay - 16, 32, 32);
+          ctx.restore();
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(34 + 16, ay, 16, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(255,255,255,.35)';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          ctx.restore();
+        };
+        const drawUserBar = () => {
+          if (!USER.name && !USER.avatar) return;
+          const barH = 54;
+          const bg = ctx.createLinearGradient(0, coverH - barH, 0, coverH);
+          bg.addColorStop(0, 'rgba(0,0,0,0)');
+          bg.addColorStop(1, 'rgba(0,0,0,.5)');
+          ctx.fillStyle = bg;
+          ctx.fillRect(0, coverH - barH, W, barH);
+          const ay = coverH - 27;
+          if (USER.avatar && AVATAR_IMG && AVATAR_IMG.complete && AVATAR_IMG.naturalWidth) drawAvatar(AVATAR_IMG);
+          if (USER.name) {
+            ctx.save();
+            ctx.fillStyle = '#fff';
+            ctx.font = '600 15px -apple-system,"PingFang SC",sans-serif';
+            ctx.textAlign = 'left';
+            ctx.shadowColor = 'rgba(0,0,0,.6)';
+            ctx.shadowBlur = 6;
+            ctx.fillText(USER.name, 34 + (USER.avatar ? 42 : 0), ay + 5);
+            ctx.restore();
+          }
+        };
+        const paint = (hasCover) => {
+          if (!hasCover) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(255,255,255,.95)';
+            ctx.font = '700 34px -apple-system,"PingFang SC",sans-serif';
+            ctx.textAlign = 'center';
+            shareWrap(ctx, title, 380).slice(0, 3).forEach((l, i) => ctx.fillText(l, W / 2, 170 + i * 46));
+            ctx.restore();
+          }
+          drawUserBar();
+          // 信息区：白色背景
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, coverH, W, H - coverH);
+          ctx.save();
+          ctx.fillStyle = '#14181f';
+          ctx.font = '600 25px -apple-system,"PingFang SC",sans-serif';
+          ctx.textAlign = 'left';
+          shareWrap(ctx, title, 282).slice(0, 3).forEach((l, i) => ctx.fillText(l, 34, coverH + 66 + i * 36));
+          // 标签 + 时间
+          ctx.fillStyle = '#9aa0aa';
+          ctx.font = '500 14px -apple-system,"PingFang SC",sans-serif';
+          ctx.fillText(tag + (dateLine ? ' · ' + dateLine : ''), 34, coverH + 210);
+          // 扫码阅读提示（右下角）
+          ctx.fillStyle = '#9aa0aa';
+          ctx.font = '400 12px -apple-system,"PingFang SC",sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('扫码阅读', W - 34 - 59, coverH + 46);
+          ctx.restore();
+          try {
+            const qr = qrcode(0, 'M');
+            qr.addData(url); qr.make();
+            const qi = new Image();
+            tasks.push(new Promise((res) => {
+              qi.onload = () => { ctx.drawImage(qi, W - 34 - 118, coverH + 60, 118, 118); res(); };
+              qi.onerror = res;
+              qi.src = qr.createDataURL(6, 0);
+            }));
+          } catch (e) {}
+          // 头像尚未加载完成时，等它加载完再补画
+          if (USER.avatar && AVATAR_IMG && !AVATAR_IMG.complete) {
+            tasks.push(new Promise((res) => {
+              AVATAR_IMG.onload = () => { drawAvatar(AVATAR_IMG); res(); };
+              AVATAR_IMG.onerror = res;
+            }));
+          }
+          Promise.all(tasks).then(finish).catch(finish);
+        };
+        if (cover) {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            // cover 模式：封面缩放铺满整个封面区域，超出部分裁掉（不再留白）
+            const r = Math.max(W / img.width, coverH / img.height);
+            const dw = img.width * r, dh = img.height * r;
+            ctx.drawImage(img, (W - dw) / 2, (coverH - dh) / 2, dw, dh);
+            paint(true);
+          };
+          img.onerror = () => paint(false);
+          img.src = cover;
+        } else { paint(false); }
+      }
+      function openShareModal(title, tag, dateLine, cover, url) {
+        if (!shareModal) return;
+        window.openPanel(shareModal);
+        lastShare = { title, url };
+        shareImg.src = '';
+        shareImg.classList.remove('share-card-img');
+        shareDownload.href = '#';
+        drawShareCard(title, tag, dateLine, cover, url, (dataUrl) => {
+          shareImg.src = dataUrl;
+          shareImg.classList.remove('share-card-img');
+          void shareImg.offsetWidth; // 重触发淡入动画
+          shareImg.classList.add('share-card-img');
+          shareDownload.href = dataUrl;
+          shareDownload.download = 'share-' + Date.now() + '.png';
+        });
+      }
+      shareModalClose?.addEventListener('click', () => { window.closePanel(shareModal); });
+      shareModal?.addEventListener('click', (e) => { if (e.target === shareModal) window.closePanel(shareModal); });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') window.closePanel(shareModal); });
+      // 底栏分享按钮：读当前文章数据（#pageShare）
+      document.getElementById('shareBtn')?.addEventListener('click', () => {
+        const ps = document.getElementById('pageShare');
+        if (!ps) return;
+        const url = location.origin + '/works/' + ps.dataset.slug + '/';
+        openShareModal(ps.dataset.title || '', ps.dataset.tag || '', ps.dataset.date || '', ps.dataset.cover || '', url);
+      });
+
+      // ---------- 快速分享（微信内拉起系统分享 / 右上角提示 / JSSDK 升级预留） ----------
+      const toastEl = document.getElementById('toast');
+      let toastTimer = null;
+      function showToast(msg) {
+        if (!toastEl) return;
+        toastEl.textContent = msg;
+        toastEl.classList.add('toast--show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toastEl.classList.remove('toast--show'), 2400);
+      }
+      const isWechat = /MicroMessenger/i.test(navigator.userAgent);
+      const shareWechat = document.getElementById('shareWechat');
+      let lastShare = null;
+      if (shareWechat) {
+        const span = shareWechat.querySelector('span');
+        if (span && isWechat) span.textContent = '微信分享';
+        shareWechat.addEventListener('click', () => {
+          if (!lastShare) return;
+          const title = lastShare.title || document.title;
+          const url = lastShare.url || location.href;
+          const shareData = { title, text: '来看看：' + title, url };
+          const fallback = () => {
+            if (isWechat) {
+              const j = (window.__SHARE_CFG__ && window.__SHARE_CFG__.wechatJSSDK) || null;
+              if (j && j.enabled && j.appId && j.signAPI) setupWechatJSSDK(j, shareData);
+              else showToast('请点右上角 ⋯ 分享给好友/朋友圈');
+            } else {
+              copyShareLink(url);
+            }
+          };
+          if (navigator.share) navigator.share(shareData).catch(() => fallback());
+          else fallback();
+        });
+      }
+      function copyShareLink(url) {
+        const done = () => showToast('链接已复制');
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url).then(done).catch(() => legacyCopy(url, done));
+        } else {
+          legacyCopy(url, done);
+        }
+      }
+      function legacyCopy(text, done) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); done(); } catch (e) { showToast('复制失败，请手动复制'); }
+        document.body.removeChild(ta);
+      }
+      // 微信 JSSDK 升级路径（预留：site.ts share.wechatJSSDK 开启后自动生效）
+      function setupWechatJSSDK(cfg, shareData) {
+        const apply = () => {
+          if (!window.wx) return;
+          wx.updateAppMessageShareData({
+            title: shareData.title, desc: shareData.text, link: shareData.url, imgUrl: '',
+            success() { showToast('已配置，请点右上角 ⋯ 分享'); },
+          });
+          wx.updateTimelineShareData({ title: shareData.title, link: shareData.url, imgUrl: '' });
+        };
+        if (window.wx) { apply(); return; }
+        const s = document.createElement('script');
+        s.src = cfg.cdn;
+        s.async = true;
+        s.onload = () => {
+          const sep = cfg.signAPI.includes('?') ? '&' : '?';
+          fetch(cfg.signAPI + sep + 'url=' + encodeURIComponent(location.href.split('#')[0]))
+            .then((r) => r.json())
+            .then((res) => {
+              wx.config({
+                debug: false,
+                appId: res.appId || cfg.appId,
+                timestamp: res.timestamp, nonceStr: res.nonceStr, signature: res.signature,
+                jsApiList: ['updateAppMessageShareData', 'updateTimelineShareData'],
+              });
+              wx.ready(apply);
+              wx.error(() => showToast('分享配置失败，请点右上角 ⋯ 分享'));
+            })
+            .catch(() => showToast('分享配置失败，请点右上角 ⋯ 分享'));
+        };
+        document.body.appendChild(s);
+      }
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { closeSearch(); }
+      });
+    </script>
+  </body>
+</html>
