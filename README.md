@@ -5,9 +5,7 @@
 * 人工复审
 * 跨平台可视化管理软件
 
-> 可用于展示传媒作品集静态博客
-
-一个开箱即用的**摄影作品集静态博客**，基于 [Astro](https://astro.build) 构建，液态玻璃（Glassmorphism）视觉风格，深色沉浸式体验，适配手机与桌面端。
+一个开箱即用的**摄影作品集静态博客**，基于 [Astro](https://astro.build) 构建，液态玻璃（Glassmorphism）视觉风格，深色沉浸式体验，适配手机与桌面端。可用于展示传媒作品集静态博客
 
 ![LightAria 首页](docs/screenshot.png)
 
