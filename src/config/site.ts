@@ -62,6 +62,20 @@ export const site = {
   // 文章正文字号（像素，14-22）：设置面板可调节，调节结果保存在浏览器本地
   mdFontSize: 17,
 
+  // 主页文章展示：'paged'（分页展示）/ 'infinite'（无限流，滚动加载全部）
+  // 分页模式下每页显示数量；用户可在设置面板切换，切换结果保存在浏览器本地
+  feed: {
+    mode: 'paged',   // 'paged' | 'infinite'
+    pageSize: 20,    // 分页模式每页数量
+  },
+
+  // 主页文章展示：'paged'（分页展示）/ 'infinite'（无限流，滚动加载全部）
+  // 分页模式下每页显示数量；用户可在设置面板切换，切换结果保存在浏览器本地
+  feed: {
+    mode: 'paged',   // 'paged' | 'infinite'
+    pageSize: 20,    // 分页模式每页数量
+  },
+
   // 自动分类（默认启用）：category 字段为空时，从标题【】方括号提取字段作为分类；
   // 标题也没有方括号时归入「未分类」。设为 false 则 category 为空一律归入「未分类」
   autoCategoryFromTitle: true,

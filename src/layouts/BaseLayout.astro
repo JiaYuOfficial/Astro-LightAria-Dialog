@@ -52,7 +52,7 @@ const themeCss = `
     <!-- 性能：预连接媒体域名，减少握手延迟 -->
 
   </head>
-  <body class={site.showBackground && site.background ? 'has-bg' : ''} data-layout-desktop={site.layoutDesktop} data-layout-mobile={site.layoutMobile} data-default-style={site.style} data-default-bg={site.showBackground} data-default-blur={site.glassBlur} data-default-bgdim={site.bgDim ?? 0.55} data-default-font={site.mdFontSize}>
+  <body class={site.showBackground && site.background ? 'has-bg' : ''} data-layout-desktop={site.layoutDesktop} data-layout-mobile={site.layoutMobile} data-default-style={site.style} data-default-bg={site.showBackground} data-default-blur={site.glassBlur} data-default-bgdim={site.bgDim ?? 0.55} data-default-font={site.mdFontSize} data-default-feed={site.feed.mode}>
     {site.comments.enabled && (
       <script is:inline define:vars={{ commentsCfg: site.comments }}>
         window.__COMMENTS__ = commentsCfg;
@@ -190,6 +190,11 @@ const themeCss = `
       <div class="layout-options">
         <button type="button" class="layout-opt" data-bg="on">显示背景图</button>
         <button type="button" class="layout-opt" data-bg="off">隐藏背景图</button>
+      </div>
+      <div class="settings-sep"></div>
+      <div class="layout-options">
+        <button type="button" class="layout-opt" data-feed="paged">分页</button>
+        <button type="button" class="layout-opt" data-feed="infinite">无限流</button>
       </div>
       <div class="settings-sep"></div>
       <div class="blur-row">
@@ -569,8 +574,21 @@ const themeCss = `
           if (b.dataset.layout) applyLayout(b.dataset.layout);
           if (b.dataset.style) applyStyle(b.dataset.style);
           if (b.dataset.bg) applyBg(b.dataset.bg === 'on');
+          if (b.dataset.feed) applyFeed(b.dataset.feed);
         })
       );
+
+      // 主页展示模式：'paged'（分页）/'infinite'（无限流）—— 与首页 index.astro 通过 localStorage + 事件联动
+      const FEED_KEY = 'lightaria-feed-mode';
+      const defFeed = document.body.dataset.defaultFeed || 'paged';
+      function applyFeed(m) {
+        localStorage.setItem(FEED_KEY, m);
+        document.querySelectorAll('[data-feed]').forEach((b) => {
+          b.classList.toggle('layout-opt--active', b.dataset.feed === m);
+        });
+        window.dispatchEvent(new CustomEvent('lightaria:feed', { detail: m }));
+      }
+      applyFeed(localStorage.getItem(FEED_KEY) || defFeed);
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { window.closePanel(settingsPanel); } });
 
       // ---------- 分享卡片（封面 + 标题 + 二维码，canvas 生成 PNG） ----------

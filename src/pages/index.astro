@@ -11,7 +11,7 @@ const works = (await getCollection('works')).sort(
 ---
 
 <BaseLayout title={site.title}>
-  <main class="feed-wrap">
+  <main class="feed-wrap" data-def-feed={site.feed.mode} data-page-size={site.feed.pageSize}>
     <div class="masonry" id="feed">
       {works.map((w, i) => (
         <div
@@ -24,6 +24,11 @@ const works = (await getCollection('works')).sort(
       ))}
     </div>
     <div class="empty" id="empty" hidden>没有匹配的案例喵～换个关键词试试？</div>
+    <div class="feed-pager" id="feedPager" hidden>
+      <button type="button" class="feed-pager__btn" id="feedPrev">‹ 上一页</button>
+      <div class="feed-pager__pages" id="feedPages"></div>
+      <button type="button" class="feed-pager__btn" id="feedNext">下一页 ›</button>
+    </div>
   </main>
 
   <script>
@@ -32,21 +37,90 @@ const works = (await getCollection('works')).sort(
     const items = document.querySelectorAll('.feed-item');
     const search = document.getElementById('search');
     const empty = document.getElementById('empty');
+    const feedPager = document.getElementById('feedPager');
+    const feedPrev = document.getElementById('feedPrev');
+    const feedNext = document.getElementById('feedNext');
+    const feedPages = document.getElementById('feedPages');
     let activeTag = '全部';
     let keyword = '';
 
+    // 主页展示模式：'paged'（分页翻页）/ 'infinite'（无限流），与设置面板联动
+    const feedWrap = document.querySelector('.feed-wrap');
+    const DEF_FEED = feedWrap ? feedWrap.dataset.defFeed : 'paged';
+    const PAGE_SIZE = parseInt((feedWrap && feedWrap.dataset.pageSize) || '20', 10);
+    let feedMode = localStorage.getItem('lightaria-feed-mode') || DEF_FEED;
+    let feedPage = 1; // 分页模式当前页
+
+    // 先筛选匹配项，再按匹配结果分页（保证分类/搜索下分页正确）
     function apply() {
       const kw = keyword.trim().toLowerCase();
-      let shown = 0;
+      const matched = [];
       items.forEach((el) => {
         const okTag = activeTag === '全部' || el.dataset.cat === activeTag;
         const okKw = !kw || (el.dataset.title || '').includes(kw);
-        const show = okTag && okKw;
-        el.hidden = !show;
-        if (show) shown++;
+        if (okTag && okKw) matched.push(el);
       });
-      empty.hidden = shown > 0;
+      const pageTotal = Math.max(1, Math.ceil(matched.length / PAGE_SIZE));
+      if (feedPage > pageTotal) feedPage = pageTotal;
+      items.forEach((el) => { el.hidden = true; });
+      if (feedMode === 'infinite') {
+        matched.forEach((el) => { el.hidden = false; });
+      } else {
+        matched.forEach((el, mi) => {
+          if (mi >= (feedPage - 1) * PAGE_SIZE && mi < feedPage * PAGE_SIZE) el.hidden = false;
+        });
+      }
+      empty.hidden = matched.length > 0;
+      // 翻页控件：分页模式且超过一页时显示（页码列表 + 上下页）
+      if (feedPager) {
+        feedPager.hidden = feedMode !== 'paged' || pageTotal <= 1;
+        if (feedPrev) feedPrev.disabled = feedPage <= 1;
+        if (feedNext) feedNext.disabled = feedPage >= pageTotal;
+        if (feedPages) renderPages(pageTotal);
+      }
     }
+
+    // 页码序列：当前页 ±1 + 首尾页，间隙用省略号（1 2 3 ... 98 99 100）
+    function pageList(page, total) {
+      const set = new Set([1, total, page - 1, page, page + 1]);
+      const sorted = [...set].filter((n) => n >= 1 && n <= total).sort((a, b) => a - b);
+      const out = [];
+      let prev = 0;
+      sorted.forEach((n) => {
+        if (n - prev > 1) out.push('...');
+        out.push(n);
+        prev = n;
+      });
+      return out;
+    }
+    function renderPages(total) {
+      feedPages.textContent = '';
+      pageList(feedPage, total).forEach((p) => {
+        if (p === '...') {
+          const dot = document.createElement('span');
+          dot.className = 'feed-pager__dot';
+          dot.textContent = '…';
+          feedPages.appendChild(dot);
+          return;
+        }
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'feed-pager__page' + (p === feedPage ? ' feed-pager__page--active' : '');
+        b.textContent = p;
+        b.addEventListener('click', () => { feedPage = p; apply(); });
+        feedPages.appendChild(b);
+      });
+    }
+
+    feedPrev?.addEventListener('click', () => { if (feedPage > 1) { feedPage--; apply(); } });
+    feedNext?.addEventListener('click', () => { feedPage++; apply(); });
+
+    // 监听设置面板切换（BaseLayout 触发）
+    window.addEventListener('lightaria:feed', (e) => {
+      feedMode = e.detail;
+      feedPage = 1;
+      apply();
+    });
 
     tagOpts.forEach((t) =>
       t.addEventListener('click', () => {

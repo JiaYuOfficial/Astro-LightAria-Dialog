@@ -1604,7 +1604,7 @@ body.layout-compact .work-card:hover .work-arrow { color: var(--lg-accent-solid)
 .archive-year__title small { margin-left: 8px; font-size: 12.5px; font-weight: 500; color: var(--lg-text-faint); }
 
 /* ---------- 图集轮播（小红书式多图左右滑动） ---------- */
-.gallery { position: relative; max-width: 920px; margin: 0 auto; }
+.gallery { position: relative; max-width: 920px; margin: 20px auto 0; }
 .gallery__track {
   display: flex;
   overflow-x: auto;
@@ -1666,4 +1666,63 @@ body.layout-compact .work-card:hover .work-arrow { color: var(--lg-accent-solid)
   .gallery__nav { width: 32px; height: 32px; }
   .gallery__nav svg { width: 17px; height: 17px; }
   .gallery__slide { max-height: 66vh; }
+}
+
+/* ---------- 主页翻页控件（分页模式） ---------- */
+.feed-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 28px auto 8px;
+}
+.feed-pager__btn {
+  padding: 9px 20px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255,255,255,.30);
+  background: rgba(255,255,255,.10);
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(160%);
+  backdrop-filter: blur(var(--lg-blur)) saturate(160%);
+  color: #fff;
+  font-size: 13.5px; font-weight: 500;
+  cursor: pointer;
+  transition: background .25s ease, transform .15s ease, opacity .2s ease;
+}
+.feed-pager__btn:hover:not(:disabled) { background: rgba(255,255,255,.20); }
+.feed-pager__btn:active:not(:disabled) { transform: scale(.96); }
+.feed-pager__btn:disabled { opacity: .35; cursor: default; }
+.feed-pager__pages {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 60vw;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.feed-pager__pages::-webkit-scrollbar { display: none; }
+.feed-pager__page {
+  min-width: 36px; height: 36px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255,255,255,.22);
+  background: rgba(255,255,255,.06);
+  color: #fff;
+  font-size: 13px; font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background .2s ease, border-color .2s ease, transform .15s ease;
+}
+.feed-pager__page:hover { background: rgba(255,255,255,.16); }
+.feed-pager__page:active { transform: scale(.94); }
+.feed-pager__page--active {
+  background: var(--lg-accent-solid);
+  border-color: transparent;
+  color: #06121f;
+  font-weight: 700;
+}
+.feed-pager__dot {
+  color: var(--lg-text-dim);
+  padding: 0 2px;
+  font-size: 13px;
+  user-select: none;
 }
