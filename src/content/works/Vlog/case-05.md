@@ -9,7 +9,7 @@ cover: "/images/samples/h2.jpg"
 video: "https://example.com/video.mp4"
 duration: "02:45"
 desc: "十分钟城市漫游记录。"
-likes: 0
+
 tags: [Vlog, 旅行]
 
 ---

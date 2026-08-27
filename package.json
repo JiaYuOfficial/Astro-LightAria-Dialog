@@ -11,6 +11,7 @@
     "backup": "bash backup.sh"
   },
   "dependencies": {
-    "astro": "^7.2.4"
+    "astro": "^7.2.4",
+    "marked": "^18.0.11"
   }
 }

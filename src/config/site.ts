@@ -10,6 +10,9 @@ export const site = {
   // SEO 描述（meta description）
   description: '摄影作品集 · 人像 / 风光 / 纪实 / 视频 —— 光与影的对白',
 
+  // 网站 Logo 图（自定义，如 /images/logo.png；友链信息块 Logo 行默认取此值）
+  logo: '/avatar.svg',
+
   // 导航栏品牌名（左上角大字）
   brand: 'LightAria',
 
@@ -33,6 +36,9 @@ export const site = {
   // 如：'#66ccff'（天蓝）/ '#ffb870'（暖橙）/ '#9f8cf0'（紫罗兰）/ '#7ad7a0'（薄荷）
   theme: {
     accent: '#66ccff',
+    // 主题色预设（设置面板色块选择；无背景图模式下背景光斑同步切换）
+    // 天蓝(洛天依) / 暖橙 / 星尘蓝紫 / 薄荷 / 樱粉 / 乐正绫红
+    presets: ['#66ccff', '#ffb870', '#7c9bff', '#7ad7a0', '#ff9eb5', '#ee4450'],
   },
 
   // 页脚自定义（预留备案信息位置）
@@ -61,13 +67,6 @@ export const site = {
 
   // 文章正文字号（像素，14-22）：设置面板可调节，调节结果保存在浏览器本地
   mdFontSize: 17,
-
-  // 主页文章展示：'paged'（分页展示）/ 'infinite'（无限流，滚动加载全部）
-  // 分页模式下每页显示数量；用户可在设置面板切换，切换结果保存在浏览器本地
-  feed: {
-    mode: 'paged',   // 'paged' | 'infinite'
-    pageSize: 20,    // 分页模式每页数量
-  },
 
   // 主页文章展示：'paged'（分页展示）/ 'infinite'（无限流，滚动加载全部）
   // 分页模式下每页显示数量；用户可在设置面板切换，切换结果保存在浏览器本地
@@ -127,6 +126,20 @@ export const site = {
     moments: true, // 动态页
     friends: true, // 友情链接页
     about: true, // 个人主页（简历）页
+  },
+
+  // 友链页「本站信息 + 申请友链」区块（友链列表上方，可自定义；enabled 关闭则隐藏）
+  // siteInfo: 矩形复制行数组（label + value，右键复制 value）
+  // apply: 整段 Markdown 文本，自由发挥
+  friendsInfo: {
+    enabled: true,
+    siteInfo: [
+      { label: '名称', value: 'LightAria' },
+      { label: '网址', value: 'https://example.com' },
+      { label: 'Logo', value: 'https://example.com/avatar.svg' },
+      { label: '描述', value: '光影咏叹调 · 摄影作品集静态博客' },
+    ],
+    apply: '请在这里输入申请友链事项',
   },
 
   // 友情链接（名称/链接/描述/头像）

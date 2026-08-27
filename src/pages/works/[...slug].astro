@@ -18,7 +18,8 @@ const related = all
   .slice(0, 2);
 
 const { title, tag, type, cover, duration, date, video, tags, updated, images } = work.data;
-const isGallery = images && images.length >= 2;
+// 图集模式：type=photo 时 images 生效（多图轮播）
+const isGallery = type === 'photo' && images && images.length > 0;
 const category = getCategory(work);
 
 // 文章页标签：分类（主题色底）置顶 + 附加标签（与信息流卡片一致）
@@ -123,7 +124,7 @@ const dateStr = date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-di
           <img class="work-avatar" src="/avatar.svg" alt={site.user.name} />
           <span>{site.user.name}</span>
           <span class="sep">·</span>
-          <span>{category}{type === 'video' ? ' · 视频' : ' · 照片'}</span>
+          <span>{category}{type === 'video' ? ' · 视频' : type === 'photo' ? ' · 图集' : ' · 图文'}</span>
           <span class="sep">·</span>
           <span>发布于 {dateStr}</span>
           {updated && (
@@ -211,6 +212,12 @@ const dateStr = date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-di
     function openToc() {
       if (!tocPanel) return;
       if (tabbar) tocPanel.style.width = tabbar.offsetWidth + 'px';
+      tocPanel.scrollTop = 0; // 再次打开时目录复位到顶部
+      // 复位拖拽位置：清掉内联定位，回到 CSS 默认位置（底部居中）
+      tocPanel.style.left = '';
+      tocPanel.style.top = '';
+      tocPanel.style.bottom = '';
+      tocPanel.style.transform = '';
       // 与设置面板互斥：打开目录时收起设置
       const sp = document.getElementById('settingsPanel');
       if (sp) window.forceClosePanel(sp);

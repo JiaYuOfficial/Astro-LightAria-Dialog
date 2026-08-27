@@ -9,7 +9,7 @@ ratio: "3/4"
 
 
 desc: "胶片日记：多图左右滑动浏览。"
-likes: 0
+
 tags: [图集, 胶片]
 images:
   - "/images/samples/h2.jpg"

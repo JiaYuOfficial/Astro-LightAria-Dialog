@@ -8,6 +8,29 @@ import { site } from '../config/site';
     <div class="archive-card">
       <h1 class="archive-title">友情链接</h1>
       <p class="archive-count">共 {site.friends.length} 个友链 · 欢迎交换</p>
+      {site.friendsInfo?.enabled && (
+        <section class="friends-info">
+          <div class="friends-info__site">
+            {site.friendsInfo.siteInfo.map((row) => {
+              const isLogo = /logo/i.test(row.label);
+              const val = isLogo ? site.logo : row.value;
+              return (
+                <div class="friends-info__row">
+                  <span class="friends-info__label">{row.label}</span>
+                  <span class="friends-info__value" title={val}>{val}</span>
+                  <button type="button" class="friends-info__copy" data-value={val} aria-label={`复制${row.label}`} title="复制">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="9" y="9" width="11" height="11" rx="2"/>
+                      <path d="M5 15V5a2 2 0 0 1 2-2h10"/>
+                    </svg>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          <div class="friends-info__apply">{site.friendsInfo.apply || ''}</div>
+        </section>
+      )}
       <div class="friends-grid">
         {site.friends.map((f) => (
           <a class="friend-card" href={f.url} target="_blank" rel="noopener noreferrer">

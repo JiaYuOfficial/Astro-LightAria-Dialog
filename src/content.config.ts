@@ -17,8 +17,8 @@ const works = defineCollection({
       .union([z.string(), z.date()])
       .optional()
       .transform((v) => (v instanceof Date ? v.toISOString().slice(0, 10) : v)),
-    // 类型：photo 照片 / video 视频
-    type: z.enum(['photo', 'video']),
+    // 类型：article 图文 / photo 图集（images 生效，多图轮播）/ video 视频
+    type: z.enum(['article', 'photo', 'video']),
     // 封面图 URL（选填；不填则自动用标题生成小红书风文字封面）
     cover: z.string().optional(),
     // 封面比例，控制信息流卡片错落感
@@ -29,12 +29,10 @@ const works = defineCollection({
     video: z.string().optional(),
     // 卡片上的简介（选填）
     desc: z.string().optional(),
-    // 点赞数（信息流展示用）
-    likes: z.number().default(0),
     // 附加标签（信息流卡片上展示的自定义标签，选填）
     tags: z.array(z.string()).default([]),
-    // 图集模式（小红书式多图左右滑动）：图片直链列表，2 张及以上时文章页顶部渲染轮播
-    // 同时作为封面兜底：首页卡片封面取 cover || images[0]
+    // 图集模式（type=photo 时生效）：图片直链列表，文章页顶部渲染左右滑动轮播
+    // 同时作为封面：首页卡片封面取 cover || images[0]
     images: z.array(z.string()).default([]),
   }),
 });

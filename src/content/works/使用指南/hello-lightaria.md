@@ -6,7 +6,7 @@ date: 2026-01-01
 type: photo
 ratio: "3/4"
 desc: "LightAria 使用指南：文章格式、图片与图集、部署"
-likes: 0
+
 tags: [使用指南, 入门]
 images:
   - "/images/samples/h2.jpg"

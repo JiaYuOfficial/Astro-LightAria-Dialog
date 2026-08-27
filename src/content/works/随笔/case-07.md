@@ -3,13 +3,9 @@ title: "快门之外【随笔】"
 tag: 随笔
 category: "随笔"
 date: 2026-01-07
-type: photo
-
-
-
-
+type: article
 desc: "没有封面图的文章，使用标题生成封面。"
-likes: 0
+
 tags: [随笔]
 
 ---

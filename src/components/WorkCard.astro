@@ -9,7 +9,8 @@ interface Props {
 const { work, index = 0 } = Astro.props;
 const { title, type, cover, ratio, duration, tags, updated, images } = work.data;
 const poster = cover || (images && images[0]) || '';
-const isGallery = images && images.length >= 2;
+// 图集模式：type=photo 时 images 生效（多图轮播）
+const isGallery = type === 'photo' && images && images.length > 0;
 
 // 分类：frontmatter category 优先，旧文章回退到第一个标签
 const category = getCategory(work);

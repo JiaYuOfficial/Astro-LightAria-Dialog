@@ -3,13 +3,13 @@ title: "山野晨雾【风光】"
 tag: 风光
 category: "风光"
 date: 2026-01-03
-type: photo
+type: article
 ratio: "16/9"
 cover: "/images/samples/h3.jpg"
 
 
 desc: "清晨山间的雾气与初阳。"
-likes: 0
+
 tags: [风光, 晨雾]
 
 ---
