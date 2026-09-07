@@ -16,6 +16,12 @@ export const site = {
   // 导航栏品牌名（左上角大字）
   brand: 'LightAria',
 
+  // 导航栏标题字号（px）：desktop 桌面端 / mobile 手机端（≤880px 生效）
+  navTitle: {
+    desktop: 25,
+    mobile: 15,
+  },
+
   // 用户信息（分享卡片封面底部信息压条：头像 + 昵称；avatar 留空则不显示头像）
   user: {
     name: 'LightAria',
@@ -47,6 +53,10 @@ export const site = {
     text: '',
     // ICP 备案号：备案完成后填写（如 '粤ICP备12345678号'），自动显示在页脚并链接到工信部
     icp: '', // 备案完成后填写，如 '粤ICP备12345678号'
+    // 公安备案号（如 '粤公网安备 4400000000号'）：留空不显示，填写后显示在 ICP 后并链接到公安备案查询
+    policeIcp: '',
+    // 公安备案自定义图标（如 '/images/police.png'）：留空使用内置盾牌图标
+    policeIcon: '',
   },
 
   // 信息流默认布局：'masonry'（网格，默认）/ 'list'（列表）/ 'compact'（简洁）

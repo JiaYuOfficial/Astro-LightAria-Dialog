@@ -17,6 +17,7 @@ const works = (await getCollection('works')).sort(
         <div
           class="feed-item"
           data-cat={getCategory(w)}
+          data-type={w.data.type === 'photo' ? (w.data.images?.length ? 'gallery' : 'image') : w.data.type}
           data-title={(w.data.title + getCategory(w)).toLowerCase()}
         >
           <WorkCard work={w} index={i} />
@@ -42,7 +43,22 @@ const works = (await getCollection('works')).sort(
     const feedNext = document.getElementById('feedNext');
     const feedPages = document.getElementById('feedPages');
     let activeTag = '全部';
+    let activeType = '全部';
     let keyword = '';
+    // URL 直达：?cat=分类名 / ?type=类型（分享作品集链接，打开即筛选）
+    const urlParams = new URLSearchParams(location.search);
+    const urlCat = urlParams.get('cat');
+    const urlType = urlParams.get('type');
+
+    // 筛选变化时同步地址栏（分类 ?cat= / 类型 ?type=），便于复制当前筛选链接
+    const syncUrl = () => {
+      const u = new URL(location.href);
+      if (activeTag === '全部') u.searchParams.delete('cat');
+      else u.searchParams.set('cat', activeTag);
+      if (activeType === '全部') u.searchParams.delete('type');
+      else u.searchParams.set('type', activeType);
+      history.replaceState(null, '', u);
+    };
 
     // 主页展示模式：'paged'（分页翻页）/ 'infinite'（无限流），与设置面板联动
     const feedWrap = document.querySelector('.feed-wrap');
@@ -57,8 +73,12 @@ const works = (await getCollection('works')).sort(
       const matched = [];
       items.forEach((el) => {
         const okTag = activeTag === '全部' || el.dataset.cat === activeTag;
+        const okType =
+          activeType === '全部' ||
+          (activeType === 'image' && (el.dataset.type === 'image' || el.dataset.type === 'article')) ||
+          el.dataset.type === activeType;
         const okKw = !kw || (el.dataset.title || '').includes(kw);
-        if (okTag && okKw) matched.push(el);
+        if (okTag && okType && okKw) matched.push(el);
       });
       const pageTotal = Math.max(1, Math.ceil(matched.length / PAGE_SIZE));
       if (feedPage > pageTotal) feedPage = pageTotal;
@@ -128,11 +148,42 @@ const works = (await getCollection('works')).sort(
         t.classList.add('tag-opt--active');
         activeTag = t.dataset.tag;
         apply();
+        syncUrl();
+      })
+    );
+    // 类型筛选（主页底栏「筛选」）：图文/图集/视频
+    const typeOpts = document.querySelectorAll('#typePanel .tag-opt');
+    typeOpts.forEach((t) =>
+      t.addEventListener('click', () => {
+        typeOpts.forEach((x) => x.classList.remove('tag-opt--active'));
+        t.classList.add('tag-opt--active');
+        activeType = t.dataset.type;
+        apply();
+        syncUrl();
       })
     );
     search?.addEventListener('input', (e) => {
       keyword = e.target.value;
       apply();
     });
+
+    // URL ?cat=/?type= 直达：激活对应筛选（值不存在则忽略，显示全部）
+    if (urlCat) {
+      const target = Array.from(tagOpts).find((o) => o.dataset.tag === urlCat);
+      if (target) {
+        tagOpts.forEach((x) => x.classList.remove('tag-opt--active'));
+        target.classList.add('tag-opt--active');
+        activeTag = urlCat;
+      }
+    }
+    if (urlType) {
+      const t2 = Array.from(typeOpts).find((o) => o.dataset.type === urlType);
+      if (t2) {
+        typeOpts.forEach((x) => x.classList.remove('tag-opt--active'));
+        t2.classList.add('tag-opt--active');
+        activeType = urlType;
+      }
+    }
+    if (urlCat || urlType) apply();
   </script>
 </BaseLayout>

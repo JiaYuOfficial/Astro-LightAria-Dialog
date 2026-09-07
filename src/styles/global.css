@@ -79,7 +79,7 @@ img { max-width: 100%; }
 }
 .lg-nav__brand {
   display: inline-flex; align-items: baseline; gap: 10px;
-  font-size: 25px; font-weight: 800; letter-spacing: .5px; white-space: nowrap; cursor: pointer;
+  font-size: var(--nav-title-d, 25px); font-weight: 800; letter-spacing: .5px; white-space: nowrap; cursor: pointer;
   text-shadow: 0 2px 8px rgba(0,0,0,.35);
 }
 .lg-nav__brand small { font-size: 13px; font-weight: 400; color: var(--lg-text-dim); letter-spacing: 1px; }
@@ -231,7 +231,7 @@ img { max-width: 100%; }
 
 /* ---------- 信息流（响应式列数：手机 1 列 / 平板 2 列 / 桌面 3-4 列） ---------- */
 .feed-wrap { max-width: 1280px; margin: 14px auto 60px; padding: 0 18px; }
-.masonry { columns: 2; column-gap: 8px; }
+.masonry { columns: 2; column-gap: 12px; }
 .feed-item { break-inside: avoid; }
 /* 网格入场：初始暂停（静态透明），布局稳定后 feed-anim 触发一次视觉顺序动画 */
 body.layout-masonry .work-card { animation: none; opacity: 0; }
@@ -241,7 +241,7 @@ body.layout-masonry.feed-anim .work-card { animation: rise .5s cubic-bezier(.2,.
 @media (min-width: 1280px) { .masonry { columns: 4; } }
 .work-card {
   break-inside: avoid;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   border-radius: var(--radius-lg);
   background: var(--lg-glass-soft);
   border: 1px solid rgba(255,255,255,.18);
@@ -658,7 +658,7 @@ body.style-flat .lg-btn {
   animation: rise .45s cubic-bezier(.2,.8,.2,1) backwards;
 }
 .article-hero { position: relative; }
-.article-hero img { width: 100%; display: block; max-height: 440px; object-fit: cover; }
+.article-hero > img { width: 100%; display: block; aspect-ratio: 16 / 9; object-fit: cover; max-height: 440px; /* 与标题封面 hero-cover 一致，横屏不占满屏 */ background: #0a0d14; }
 .article-video { width: 100%; display: block; background: #000; object-fit: contain; }
 .article-body { padding: 26px 30px 34px; }
 @media (max-width: 640px) { .article-body { padding: 20px 18px 26px; } }
@@ -1076,7 +1076,7 @@ body.style-flat .lg-btn {
 .back-btn:active { transform: scale(.95); }
 .back-btn svg { width: 12px; height: 12px; }
 
-.foot { max-width: 1280px; margin: 0 auto 30px; text-align: center; font-size: 12.5px; color: var(--lg-text-dim); }
+.foot { max-width: 1280px; margin: 0 auto 30px; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; text-align: center; font-size: 12.5px; color: var(--lg-text-dim); }
 .foot-icp { margin-left: 10px; color: var(--lg-text); text-decoration: none; transition: color .3s ease; }
 .foot-icp:hover { color: var(--lg-accent-solid); }
 
@@ -1111,7 +1111,12 @@ body { padding-bottom: 86px; }
   transition: background .3s ease, color .3s ease, border-color .3s ease, transform .15s ease;
 }
 .tabbar-item:hover { color: #fff; background: rgba(255,255,255,.22); border-color: rgba(255,255,255,.4); }
-.tabbar-item:active { transform: scale(.95); }
+.tabbar-item:active {
+  transform: scale(.95);
+  color: var(--lg-accent-solid);
+  background: color-mix(in srgb, var(--lg-accent-solid) 16%, transparent);
+  border-color: color-mix(in srgb, var(--lg-accent-solid) 40%, transparent);
+}
 .tabbar-item svg { width: 15px; height: 15px; flex: none; }
 .tabbar-sep { width: 1px; height: 18px; background: rgba(255,255,255,.18); margin: 0 2px; }
 @media (max-width: 880px) {
@@ -1120,18 +1125,19 @@ body { padding-bottom: 86px; }
 
 /* ---------- 手机端主页整体缩小（≤880px） ---------- */
 @media (max-width: 880px) {
-  .lg-nav { padding: 9px 12px; gap: 8px; }
-  .lg-nav__brand { font-size: 20px; }
-  .lg-search-btn { width: 32px; height: 32px; }
-  .feed-wrap { padding: 0 10px; margin: 10px auto 52px; }
-  .masonry { column-gap: 8px; }
-  .feed-item { margin-bottom: 10px; }
-  .work-info { padding: 6px 8px 8px; }
-  .work-title { font-size: 13px; }
-  .work-chip { font-size: 9px; padding: 1px 6px; }
-  .cover-text__main { font-size: 16px; -webkit-line-clamp: 3; }
-  .cover-text__sub { font-size: 10px; }
-  .work-date { font-size: 11px; }
+  .lg-nav { padding: 8px 11px; gap: 7px; }
+  .lg-nav__brand { font-size: var(--nav-title-m, 15px); gap: 7px; }
+  .lg-nav__brand small { font-size: 11px; }
+  .lg-search-btn { width: 30px; height: 30px; }
+  .feed-wrap { padding: 0 8px; margin: 10px auto 52px; }
+  .masonry { column-gap: 6px; }
+  .feed-item { margin-bottom: 8px; }
+  .work-info { padding: 5px 7px 7px; }
+  .work-title { font-size: 12px; }
+  .work-chip { font-size: 8.5px; padding: 1px 5px; }
+  .cover-text__main { font-size: 15px; -webkit-line-clamp: 3; }
+  .cover-text__sub { font-size: 9.5px; }
+  .work-date { font-size: 10.5px; }
   .tabbar { bottom: 24px; padding: 9px 12px; }
   .tabbar-item { padding: 9px 15px; font-size: 13px; }
   .tabbar-item svg { width: 15px; height: 15px; }
@@ -1962,3 +1968,39 @@ body.layout-compact .work-card:hover .work-arrow { color: var(--lg-accent-solid)
   .friends-info { grid-template-columns: 1fr; }
   .friends-info__row { grid-template-columns: 52px 1fr 30px; padding: 8px 10px; }
 }
+/* 公安备案（盾牌图标对齐） */
+.foot-icp--police { display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; }
+.foot-icp--police svg { width: 13px; height: 13px; opacity: .85; }
+/* 公安备案自定义图标 */
+.foot-icp__icon { width: 14px; height: 14px; object-fit: contain; opacity: .9; }
+
+/* ---------- 文章代码块：语言标签 + 复制按钮 ---------- */
+.md pre.code-block { position: relative; padding-top: 44px; }
+.code-lang {
+  position: absolute; top: 12px; left: 14px;
+  font-size: 11px; line-height: 1; padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.18);
+  color: var(--lg-text-dim);
+  letter-spacing: .4px; user-select: none;
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+.code-copy {
+  position: absolute; top: 9px; right: 10px;
+  width: 27px; height: 27px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 7px; cursor: pointer;
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.18);
+  color: var(--lg-text-dim);
+  opacity: .8; transition: all .25s ease;
+}
+.code-copy svg { width: 13px; height: 13px; }
+.code-copy:hover {
+  opacity: 1;
+  color: var(--lg-accent-solid);
+  background: color-mix(in srgb, var(--lg-accent-solid) 15%, transparent);
+  border-color: color-mix(in srgb, var(--lg-accent-solid) 45%, transparent);
+}
+.code-copy.is-copied { color: #4ade80; border-color: rgba(74,222,128,.45); opacity: 1; }

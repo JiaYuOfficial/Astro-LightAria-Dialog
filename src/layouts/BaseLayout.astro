@@ -40,7 +40,7 @@ const themeCss = `
 ---
 
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" style={`--nav-title-d:${site.navTitle?.desktop ?? 25}px;--nav-title-m:${site.navTitle?.mobile ?? 15}px`}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -49,6 +49,7 @@ const themeCss = `
     <meta name="robots" content="index,follow" />
     <!-- 站点色系：由 src/config/site.ts 的 theme.accent 派生 -->
     <style is:global set:html={themeCss}></style>
+
     <!-- 性能：预连接媒体域名，减少握手延迟 -->
 
   </head>
@@ -111,6 +112,16 @@ const themeCss = `
       {site.footer.icp && (
         <a class="foot-icp" href="https://beian.miit.gov.cn/" target="_blank" rel="nofollow">{site.footer.icp}</a>
       )}
+      {site.footer.policeIcp && (
+        <a class="foot-icp foot-icp--police" href={`https://beian.mps.gov.cn/#/query/webSearch?code=${(site.footer.policeIcp.match(/\d+/g) || []).join('')}`} target="_blank" rel="noreferrer">
+          {site.footer.policeIcon ? (
+            <img class="foot-icp__icon" src={site.footer.policeIcon} alt="" loading="lazy" decoding="async" />
+          ) : (
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2L4 5v6c0 5.25 3.4 9.74 8 11 4.6-1.26 8-5.75 8-11V5l-8-3zm-1.5 14.2l-3.6-3.6 1.4-1.4 2.2 2.2 4.6-4.6 1.4 1.4-6 6z"/></svg>
+          )}
+          {site.footer.policeIcp}
+        </a>
+      )}
     </div>
 
     <!-- 底部 TAB 栏（液态玻璃，常驻） -->
@@ -136,6 +147,11 @@ const themeCss = `
             <span>分类</span>
           </button>
           <span class="tabbar-sep"></span>
+          <button type="button" class="tabbar-item" id="typeBtn" aria-label="类型筛选">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+            <span>筛选</span>
+          </button>
+          <span class="tabbar-sep"></span>
         </>
       )}
       <button type="button" class="tabbar-item" id="tocBtn" aria-label="文章目录" hidden>
@@ -148,15 +164,11 @@ const themeCss = `
         <span>设置</span>
       </button>
       <span class="tabbar-sep"></span>
-      {!isHome && (
-        <>
-          <button type="button" class="tabbar-item" id="shareBtn" aria-label="生成分享卡片">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>
-            <span>分享</span>
-          </button>
-          <span class="tabbar-sep"></span>
-        </>
-      )}
+      <button type="button" class="tabbar-item" id="shareBtn" aria-label="生成分享卡片">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>
+        <span>分享</span>
+      </button>
+      <span class="tabbar-sep"></span>
       <button type="button" class="tabbar-item" id="toTop" aria-label="回到顶部">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
         <span>回到顶部</span>
@@ -168,6 +180,14 @@ const themeCss = `
       {tags.map((t) => (
         <button type="button" class={`tag-opt${t === '全部' ? ' tag-opt--active' : ''}`} data-tag={t}>{t}</button>
       ))}
+    </div>
+
+    <!-- 类型筛选面板（主页底栏「筛选」弹出：图文/图集/视频） -->
+    <div class="tag-panel" id="typePanel" hidden>
+      <button type="button" class="tag-opt tag-opt--active" data-type="全部">全部</button>
+      <button type="button" class="tag-opt" data-type="image">图文</button>
+      <button type="button" class="tag-opt" data-type="gallery">图集</button>
+      <button type="button" class="tag-opt" data-type="video">视频</button>
     </div>
 
     <!-- 设置面板（布局切换） -->
@@ -353,16 +373,31 @@ const themeCss = `
       });
       searchClose?.addEventListener('click', closeSearch);
 
-      // 标签面板（主页底栏「分类」）：开时收起设置/目录
+      // 标签面板（主页底栏「分类」）：开时收起设置/目录/筛选
       const tagBtn = document.getElementById('tagBtn');
       const tagPanel = document.getElementById('tagPanel');
       tagBtn?.addEventListener('click', () => {
         if (tagPanel.hidden || tagPanel.classList.contains('out')) {
           window.forceClosePanel(document.getElementById('settingsPanel'));
           window.forceClosePanel(document.getElementById('tocPanel'));
+          window.forceClosePanel(document.getElementById('typePanel'));
           window.openPanel(tagPanel);
         } else {
           window.closePanel(tagPanel);
+        }
+      });
+
+      // 类型筛选面板（主页底栏「筛选」）：开时收起设置/目录/标签
+      const typeBtn = document.getElementById('typeBtn');
+      const typePanel = document.getElementById('typePanel');
+      typeBtn?.addEventListener('click', () => {
+        if (typePanel.hidden || typePanel.classList.contains('out')) {
+          window.forceClosePanel(document.getElementById('settingsPanel'));
+          window.forceClosePanel(document.getElementById('tocPanel'));
+          window.forceClosePanel(tagPanel);
+          window.openPanel(typePanel);
+        } else {
+          window.closePanel(typePanel);
         }
       });
       // 点击面板以外的空白处关闭分类面板
@@ -532,6 +567,50 @@ const themeCss = `
       applyFont(localStorage.getItem(FONT_KEY) || defFont);
       fontRange?.addEventListener('input', () => applyFont(fontRange.value));
 
+      // 文章代码块：显示语言标签 + 右上角复制按钮
+      // （Astro Shiki 渲染结构：<pre class="astro-code" data-language="xxx"><code>…）
+      document.querySelectorAll('.md pre').forEach((pre) => {
+        const code = pre.querySelector('code');
+        if (!code) return;
+        pre.classList.add('code-block');
+        // 语言：优先 pre[data-language]，兜底 code class="language-*"
+        const lang =
+          pre.dataset.language ||
+          ((code.className.match(/language-([\w+#.-]+)/) || [])[1] || '');
+        if (lang) {
+          const tag = document.createElement('span');
+          tag.className = 'code-lang';
+          tag.textContent = lang;
+          pre.appendChild(tag);
+        }
+        // 复制按钮（右上角）
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'code-copy';
+        btn.setAttribute('aria-label', '复制代码');
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+        btn.addEventListener('click', () => {
+          const text = code.innerText;
+          const copy = async () => {
+            try { await navigator.clipboard.writeText(text); }
+            catch (e) {
+              const ta = document.createElement('textarea');
+              ta.value = text; document.body.appendChild(ta); ta.select();
+              document.execCommand('copy'); document.body.removeChild(ta);
+            }
+          };
+          copy().then(() => {
+            btn.classList.add('is-copied');
+            btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+            setTimeout(() => {
+              btn.classList.remove('is-copied');
+              btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+            }, 1500);
+          });
+        });
+        pre.appendChild(btn);
+      });
+
       // 友链页：矩形行一键复制
       document.querySelectorAll('.friends-info__copy').forEach((btn) => {
         btn.addEventListener('click', () => {
@@ -576,6 +655,17 @@ const themeCss = `
             }, 1500);
           });
         });
+      });
+
+      // 封面图自适应：图片加载后按真实宽高比设置卡片比例（cover 不再按 ratio 字段裁切）
+      document.querySelectorAll('.work-cover img').forEach((img) => {
+        const fit = () => {
+          if (img.naturalWidth && img.naturalHeight) {
+            const cover = img.closest('.work-cover');
+            if (cover) cover.style.aspectRatio = img.naturalWidth + ' / ' + img.naturalHeight;
+          }
+        };
+        if (img.complete) fit(); else img.addEventListener('load', fit);
       });
 
       // 性能：正文图片懒加载（避免整页图同时下载）+ 加载完成淡入（消除闪白）
@@ -599,7 +689,8 @@ const themeCss = `
       const lightboxThumbs = document.getElementById('lightboxThumbs');
       let lbImages = [], lbIndex = 0;
       function collectImages() {
-        return Array.from(document.querySelectorAll('.md img, .article-hero img, .moment-img'));
+        // hero 封面不可点击预览；图集轮播图与正文图、动态图可预览
+        return Array.from(document.querySelectorAll('.md img, .gallery__slide img, .moment-img'));
       }
       function renderLightbox() {
         const img = lbImages[lbIndex];
@@ -640,7 +731,8 @@ const themeCss = `
         renderLightbox();
       }
       document.addEventListener('click', (e) => {
-        const img = e.target.closest('.md img, .article-hero img, .moment-img');
+        // 与 collectImages 保持一致：hero 封面不可预览，正文/图集/动态图可预览
+        const img = e.target.closest('.md img, .gallery__slide img, .moment-img');
         if (!img) return;
         openLightboxAt(collectImages().indexOf(img));
       });
@@ -851,12 +943,20 @@ const themeCss = `
       shareModalClose?.addEventListener('click', () => { window.closePanel(shareModal); });
       shareModal?.addEventListener('click', (e) => { if (e.target === shareModal) window.closePanel(shareModal); });
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape') window.closePanel(shareModal); });
-      // 底栏分享按钮：读当前文章数据（#pageShare）
+      // 底栏分享按钮（全局可用）：文章页生成文章分享卡；主页/其他页生成「当前页面」分享卡
       document.getElementById('shareBtn')?.addEventListener('click', () => {
         const ps = document.getElementById('pageShare');
-        if (!ps) return;
-        const url = location.origin + '/works/' + ps.dataset.slug + '/';
-        openShareModal(ps.dataset.title || '', ps.dataset.tag || '', ps.dataset.date || '', ps.dataset.cover || '', url);
+        if (ps) {
+          const url = location.origin + '/works/' + ps.dataset.slug + '/';
+          openShareModal(ps.dataset.title || '', ps.dataset.tag || '', ps.dataset.date || '', ps.dataset.cover || '', url);
+          return;
+        }
+        // 通用：分享当前页面（含 ?cat=/?type= 筛选直达链接，扫码直达）
+        const q = new URLSearchParams(location.search);
+        const cat = q.get('cat');
+        const type = q.get('type');
+        const lbl = cat || { image: '图文', gallery: '图集', video: '视频' }[type] || (type ? '精选' : '全部作品');
+        openShareModal(document.title || '作品集', lbl, '', '', location.href);
       });
 
       // ---------- 快速分享（微信内拉起系统分享 / 右上角提示 / JSSDK 升级预留） ----------
