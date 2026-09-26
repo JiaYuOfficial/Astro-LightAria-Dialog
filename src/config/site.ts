@@ -7,6 +7,11 @@ export const site = {
   // 主标题（浏览器标签页标题 / SEO）
   title: 'LightAria',
 
+  // 搜索引擎收录：正式版 false（index）；测试/演示版 true（noindex 不收录）
+  noindex: true,
+
+  // 资源预连接域名（图床/视频 CDN，首次进入提前建连；留空则不输出）
+  preconnect: [],
   // SEO 描述（meta description）
   description: '摄影作品集 · 人像 / 风光 / 纪实 / 视频 —— 光与影的对白',
 

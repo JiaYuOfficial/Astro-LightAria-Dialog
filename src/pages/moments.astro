@@ -52,7 +52,7 @@ function yearLabel(d: Date) {
                   <div class="moment-dot"></div>
                   <div class="moment-body">
                     <div class="moment-head">
-                      <img class="moment-avatar" src="/avatar.svg" alt={site.user.name} loading="lazy" />
+                      <img class="moment-avatar" src="/avatar.svg" alt={site.user.name} loading="lazy" decoding="async" />
                       <div class="moment-head__info">
                         <span class="moment-nick">{site.user.name}</span>
                         <span class="moment-time">{timeStr(m.data.date)}</span>

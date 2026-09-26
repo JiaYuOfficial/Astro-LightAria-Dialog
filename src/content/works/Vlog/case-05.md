@@ -4,7 +4,6 @@ tag: Vlog
 category: "Vlog"
 date: 2026-01-05
 type: video
-ratio: "16/9"
 cover: "/images/samples/h2.jpg"
 video: "https://example.com/video.mp4"
 duration: "02:45"

@@ -7,10 +7,12 @@ interface Props {
   index?: number;
 }
 const { work, index = 0 } = Astro.props;
-const { title, type, cover, ratio, duration, tags, updated, images } = work.data;
+const { title, type, cover, duration, tags, updated, images } = work.data;
 const poster = cover || (images && images[0]) || '';
 // 图集模式：type=photo 时 images 生效（多图轮播）
 const isGallery = type === 'photo' && images && images.length > 0;
+// 封面容器比例：有封面图 → 自动按图片真实比例（瀑布流错落）；无封面 → 标题文字封面默认 3:2 横屏
+const coverStyle = poster ? undefined : 'aspect-ratio:3/2';
 
 // 分类：frontmatter category 优先，旧文章回退到第一个标签
 const category = getCategory(work);
@@ -28,7 +30,7 @@ const grad = [...work.id].reduce((a, c) => a + c.charCodeAt(0), 0) % 5;
 
 <article class="work-card" style={`animation-delay:${index * 40}ms`}>
   <a href={`/works/${work.id}/`}>
-    <div class="work-cover" style={`aspect-ratio:${poster ? ratio : '8/5'}`}>
+    <div class="work-cover" style={coverStyle}>
       {poster ? (
         <img
           src={poster}

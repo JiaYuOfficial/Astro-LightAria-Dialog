@@ -4,7 +4,6 @@ tag: 图集
 category: "图集"
 date: 2026-01-06
 type: photo
-ratio: "3/4"
 
 
 

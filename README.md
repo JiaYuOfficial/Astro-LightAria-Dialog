@@ -51,26 +51,26 @@ npm run preview   # 本地预览构建产物
 ```markdown
 ---
 title: "【人像】夏日海边写真"
-tag: 人像
-category: "人像"          # 选填，优先级高于标题【】
+category: "人像"          # 主分类（选填；留空自动取标题【】括号，再无则归「未分类」）
 date: 2026-06-18
-type: photo                # photo | video
-cover: "/images/cover.jpg" # 选填，不填则用标题生成封面
-ratio: "3/4"               # 封面比例，默认 8/5
+type: photo                # photo(图文/图集) | video | article
+cover: "/images/cover.jpg" # 选填，不填则用标题生成 3:2 文字封面
 desc: "作品描述"
-likes: 0
-tags: [人像, 胶片]
-images:                    # 图集模式（≥2 张左右滑动）
+tags: [人像, 胶片]          # 附加标签（卡片标签、归档标签视图）
+images:                    # 图集模式（≥2 张左右滑动；有封面时按图片真实比例展示）
   - "/images/1.jpg"
   - "/images/2.jpg"
+video: "https://..."       # type=video 时填视频直链
+duration: "03:24"          # type=video 可选，卡片显示时长
 ---
 
 这里是正文（Markdown），展示在轮播/封面下方。
 ```
 
 - 本地图片放 `public/`，引用 `/images/xxx.jpg`
-- 图集：`images` 数组 ≥2 张自动轮播，第一张决定容器比例，卡片封面取第一张
-- 视频：`type: video` + `video` 直链 + 可选 `duration`
+- 图集：`images` 数组 ≥2 张自动轮播，卡片封面取第一张
+- 封面比例：有封面图 → 自动按图片真实比例（瀑布流错落）；无封面 → 标题文字封面 3:2
+- 分类直达分享：主页地址带 `?cat=分类名`（如 `/?cat=人像`）打开即筛选该分类，底栏点分类/筛选后地址栏自动同步链接
 
 ## ⚙️ 自定义配置
 
@@ -84,6 +84,7 @@ images:                    # 图集模式（≥2 张左右滑动）
 | `user` / `profile` | 分享卡片与个人主页信息 |
 | `layoutDesktop` / `layoutMobile` | 默认布局 |
 | `style` / `glassBlur` / `bgDim` / `mdFontSize` | 默认样式与设置项默认值 |
+| `navTitle.desktop` / `navTitle.mobile` | 导航栏标题字号（桌面/手机端） |
 | `autoCategoryFromTitle` | 标题【】自动分类开关 |
 | `comments` | 评论系统（预留 Twikoo / Waline / Artalk） |
 | `friends` | 友情链接 |

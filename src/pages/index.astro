@@ -8,9 +8,30 @@ import { getCategory } from '../lib/work';
 const works = (await getCollection('works')).sort(
   (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
 );
+
+// —— SEO：主页 JSON-LD（站点 + 作品列表）——
+const siteBase = ((Astro.site && Astro.site.toString()) || '').replace(/\/$/, '');
+const homeItems = works.slice(0, 12).map((w, i) => ({
+  '@type': 'ListItem',
+  position: i + 1,
+  name: w.data.title,
+  url: `${siteBase}/works/${w.id}/`,
+}));
+const websiteLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: site.brand,
+  description: site.description,
+};
+const listLd = {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: '全部作品',
+  itemListElement: homeItems,
+};
 ---
 
-<BaseLayout title={site.title}>
+<BaseLayout title={site.title} image={site.logo} type="website" jsonLd={[websiteLd, listLd]}>
   <main class="feed-wrap" data-def-feed={site.feed.mode} data-page-size={site.feed.pageSize}>
     <div class="masonry" id="feed">
       {works.map((w, i) => (

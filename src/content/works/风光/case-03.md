@@ -4,7 +4,6 @@ tag: 风光
 category: "风光"
 date: 2026-01-03
 type: article
-ratio: "16/9"
 cover: "/images/samples/h3.jpg"
 
 

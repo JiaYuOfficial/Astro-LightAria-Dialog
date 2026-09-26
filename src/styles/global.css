@@ -292,6 +292,9 @@ body.layout-masonry.feed-anim .work-card { animation: rise .5s cubic-bezier(.2,.
 .cover-text--3 { background: linear-gradient(160deg, #f6d365 0%, #fda085 100%); }
 .cover-text--4 { background: linear-gradient(160deg, #667eea 0%, #764ba2 100%); }
 .work-cover img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .6s cubic-bezier(.2,.8,.2,1); }
+/* 瀑布流（网格）下封面图按图片真实比例撑开（无固定 aspect-ratio） */
+.masonry .work-cover { aspect-ratio: auto; }
+.masonry .work-cover img { height: auto; }
 .work-card:hover .work-cover img { transform: scale(1.05); }
 .work-tags {
   position: absolute; left: 10px; top: 10px;
@@ -2004,3 +2007,13 @@ body.layout-compact .work-card:hover .work-arrow { color: var(--lg-accent-solid)
   border-color: color-mix(in srgb, var(--lg-accent-solid) 45%, transparent);
 }
 .code-copy.is-copied { color: #4ade80; border-color: rgba(74,222,128,.45); opacity: 1; }
+
+/* ---------- 无障碍：系统「减少动态效果」时禁用动画与过渡 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

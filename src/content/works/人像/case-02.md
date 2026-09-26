@@ -4,7 +4,6 @@ tag: 人像
 category: "人像"
 date: 2026-01-02
 type: article
-ratio: "3/4"
 cover: "/images/samples/h4.jpg"
 
 

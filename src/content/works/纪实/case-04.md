@@ -4,7 +4,6 @@ tag: 纪实
 category: "纪实"
 date: 2026-01-04
 type: article
-ratio: "3/2"
 cover: "/images/samples/h6.jpg"
 
 
