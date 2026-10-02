@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import EncryptedContent from '../../components/EncryptedContent.astro';
 import { getCollection, render } from 'astro:content';
-import type { CollectionEntry } from 'astro:content';
 import { site } from '../../config/site';
 import { getCategory } from '../../lib/work';
 
@@ -21,6 +21,9 @@ const { title, tag, type, cover, duration, date, video, tags, updated, images } 
 // 图集模式：type=photo 时 images 生效（多图轮播）
 const isGallery = type === 'photo' && images && images.length > 0;
 const category = getCategory(work);
+
+// 加密文章：正文与目录加密后下发，需在浏览器端输入密码解密（元数据/封面保持公开）
+const isEncrypted = Boolean(work.data.password);
 
 // 文章页标签：分类（主题色底）置顶 + 附加标签（与信息流卡片一致）
 const allTags = [category, ...tags.filter((t) => t !== category)];
@@ -87,6 +90,7 @@ const breadcrumbLd = {
   image={seoImg}
   type={type === 'video' ? 'video.other' : 'article'}
   jsonLd={[seoLd, breadcrumbLd]}
+  noindex={isEncrypted}
 >
   <main class="article-wrap">
     <article class="article-card">
@@ -167,7 +171,20 @@ const breadcrumbLd = {
           )}
         </div>
 
-        <div class="md"><Content /></div>
+        {isEncrypted ? (
+          <EncryptedContent password={work.data.password!} slug={work.id} hint={work.data.passwordHint}>
+            <div class="md"><Content /></div>
+            {toc.length > 0 && (
+              <Fragment slot="toc">
+                {toc.map((h) => (
+                  <button type="button" data-d={h.depth} data-t={h.text}>{h.text}</button>
+                ))}
+              </Fragment>
+            )}
+          </EncryptedContent>
+        ) : (
+          <div class="md"><Content /></div>
+        )}
 
         <div class="article-end">
           {related.length > 0 && (
@@ -196,7 +213,7 @@ const breadcrumbLd = {
               </div>
             </div>
           )}
-          {site.comments.enabled && (
+          {site.comments.enabled && !isEncrypted && (
             <div class="comments-wrap" id="comments">
               <h4>评论</h4>
               <div id="tcomment"></div>
@@ -210,13 +227,14 @@ const breadcrumbLd = {
   <div id="pageShare" data-title={title} data-cover={cover || ''} data-tag={category} data-date={dateStr + (updated ? ` · 更新 ${updated}` : '')} data-slug={work.id} hidden></div>
 
   {toc.length > 0 && (
-    <div class="toc-panel" id="tocPanel" hidden>
+    <div class="toc-panel" id="tocPanel" data-locked={isEncrypted ? 'true' : undefined} hidden>
       <div class="toc-panel__header">
         <span class="toc-panel__title">文章目录</span>
         <button type="button" class="toc-panel__close" id="tocPanelClose" aria-label="关闭目录">×</button>
       </div>
       <nav>
-        {toc.map((h) => (
+        {/* 加密文章：明文目录不下发，解密后由客户端注入 */}
+        {!isEncrypted && toc.map((h) => (
           <button type="button" data-d={h.depth} data-t={h.text}>{h.text}</button>
         ))}
       </nav>
@@ -229,16 +247,24 @@ const breadcrumbLd = {
     const tocSep = document.getElementById('tocSep');
     const tocPanel = document.getElementById('tocPanel');
     const tocPanelClose = document.getElementById('tocPanelClose');
-    const tabbar = document.querySelector('.tabbar');
+    const tabbar = document.querySelector<HTMLElement>('.tabbar');
 
     // 有目录的文章才显示底栏目录按钮，并同步面板宽度
     function syncToc() {
       if (!tocPanel) return; // 无目录：按钮保持隐藏
+      // 加密文章未解密时目录为空：按钮保持隐藏，解密后再点亮
+      if (tocPanel.dataset.locked === 'true') {
+        if (tocBtn) tocBtn.hidden = true;
+        if (tocSep) tocSep.hidden = true;
+        return;
+      }
       if (tocBtn) tocBtn.hidden = false;
       if (tocSep) tocSep.hidden = false;
       if (tabbar) tocPanel.style.width = tabbar.offsetWidth + 'px';
     }
     window.addEventListener('resize', syncToc);
+    // 加密文章解密后重新同步目录按钮显隐与面板宽度
+    window.addEventListener('lightaria:decrypted', syncToc);
     syncToc();
 
     function openToc() {
@@ -314,7 +340,7 @@ const breadcrumbLd = {
     }
 
     // 视频播放器：按视频真实比例适配（横屏 16:9 全宽 / 竖屏窄条居中），避免黑边
-    const articleVideo = document.querySelector('video.article-video');
+    const articleVideo = document.querySelector<HTMLVideoElement>('video.article-video');
     if (articleVideo) {
       articleVideo.addEventListener('loadedmetadata', () => {
         const w = articleVideo.videoWidth;
@@ -336,10 +362,10 @@ const breadcrumbLd = {
     const gallery = document.getElementById('gallery');
     if (gallery) {
       const gTrack = gallery.querySelector('.gallery__track');
-      const gSlides = gallery.querySelectorAll('.gallery__slide');
+      const gSlides = gallery.querySelectorAll<HTMLElement>('.gallery__slide');
       const dotsWrap = document.getElementById('galleryDots');
       // 统一比例：以第一张图为基准定容器比例，其余图 contain 完整显示（留白为白边）
-      const firstImg = gSlides[0] ? gSlides[0].querySelector('img') : null;
+      const firstImg = gSlides[0] ? gSlides[0].querySelector<HTMLImageElement>('img') : null;
       if (firstImg) {
         const setRatio = () => {
           if (firstImg.naturalWidth && firstImg.naturalHeight) {
@@ -382,16 +408,16 @@ const breadcrumbLd = {
     }
 
     // 目录链接：按标题文本匹配滚动，向上偏移避开悬浮导航
-    // 目录项直接绑定点击（不再走 document 级事件委派）
-    document.querySelectorAll('[data-t]').forEach((el) => {
-      el.addEventListener('click', () => {
-        const heads = [...document.querySelectorAll('.md h2, .md h3')];
-        const target = heads.find((h) => h.textContent.trim() === el.dataset.t);
-        if (target) {
-          const y = target.getBoundingClientRect().top + window.scrollY - 84;
-          window.scrollTo({ top: Math.max(y, 0), behavior: 'smooth' });
-        }
-      });
+    // 委派到 #tocPanel（外壳静态存在），加密文章解密后动态注入的目录项同样可点
+    tocPanel?.addEventListener('click', (e) => {
+      const el = (e.target as Element).closest<HTMLElement>('[data-t]');
+      if (!el || !tocPanel.contains(el)) return;
+      const heads = [...document.querySelectorAll('.md h2, .md h3')];
+      const target = heads.find((h) => h.textContent.trim() === el.dataset.t);
+      if (target) {
+        const y = target.getBoundingClientRect().top + window.scrollY - 84;
+        window.scrollTo({ top: Math.max(y, 0), behavior: 'smooth' });
+      }
     });
   </script>
 </BaseLayout>

@@ -34,6 +34,12 @@ const works = defineCollection({
     // 图集模式（type=photo 时生效）：图片直链列表，文章页顶部渲染左右滑动轮播
     // 同时作为封面：首页卡片封面取 cover || images[0]
     images: z.array(z.string()).default([]),
+    // 加密：填写后正文（含目录）以 AES-256-GCM 加密写入页面，访问需输入密码
+    // ⚠️ 密码以明文存放在 frontmatter，仓库必须保持私有
+    // ⚠️ 纯数字密码必须加引号（如 password: "07120712"），否则 YAML 会当成数字解析并丢掉前导 0
+    password: z.string().optional(),
+    // 密码提示（选填；显示在输入框下方，帮助回忆但不直接泄漏密码）
+    passwordHint: z.string().optional(),
   }),
 });
 

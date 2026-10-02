@@ -23,7 +23,7 @@ function shareWrap(ctx, text, maxWidth) {
   return lines;
 }
 // 分享卡片用户信息（site.ts user 配置）：封面底部信息压条的头像与昵称
-const USER = window.__USER__ || {};
+const USER = window.__USER__ || { name: '', avatar: '' };
 const AVATAR_IMG = (() => {
   if (!USER.avatar) return null;
   const i = new Image();

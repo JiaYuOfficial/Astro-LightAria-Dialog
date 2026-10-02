@@ -1,3 +1,8 @@
+
+
+#其它
+firefly-encrypt-migration/
+
 # 依赖
 node_modules/
 
@@ -29,3 +34,5 @@ Thumbs.db
 
 # 本地临时文件
 *.local
+.gitignore
+

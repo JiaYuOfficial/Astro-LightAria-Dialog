@@ -1,0 +1,308 @@
+---
+// 加密文章容器：构建期把插槽内容（正文 + 目录）渲染为 HTML 字符串后整体加密，
+// 浏览器端输入正确密码后用 Web Crypto 解密并注入页面。
+// 密码只存在于本组件 frontmatter，绝不写入 DOM / define:vars。
+import { encryptPayload } from '../lib/crypto';
+
+interface Props {
+  password: string;
+  slug: string;
+  hint?: string;
+}
+const { password, slug, hint = '' } = Astro.props;
+
+// body 为完整的 <div class="md">…</div> 外壳（保证 .md 排版与 .md img 选择器可用）
+const body = await Astro.slots.render('default');
+const toc = Astro.slots.has('toc') ? await Astro.slots.render('toc') : '';
+const encrypted = encryptPayload(JSON.stringify({ body, toc }), password);
+const sessionKey = `lightaria:pw:${slug}`;
+---
+
+<div
+  id="encrypted-container"
+  data-encrypted={encrypted}
+  data-slug={slug}
+  data-session-key={sessionKey}
+>
+  <div id="password-ui" class="enc-panel">
+    <div class="enc-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="10.5" width="16" height="10.5" rx="2.5"></rect>
+        <path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"></path>
+      </svg>
+    </div>
+    <h3 class="enc-title">这篇文章已加密</h3>
+    <p class="enc-sub">请输入访问密码后查看正文</p>
+    <form id="password-form" autocomplete="off">
+      <label class="sr-only" for="password-input">访问密码</label>
+      <input
+        id="password-input"
+        type="password"
+        placeholder="请输入密码"
+        autocomplete="current-password"
+        required
+      />
+      <button type="submit" id="password-submit">解密</button>
+    </form>
+    {hint && <p class="enc-hint">提示：{hint}</p>}
+    <p id="password-error" class="enc-error" role="alert" hidden>密码错误，请重试</p>
+    <!-- 冷却提示：每秒刷新剩余时间，故不加 role="alert"（避免读屏软件反复播报） -->
+    <p id="password-lock" class="enc-error" hidden></p>
+  </div>
+
+  <!-- 解密后的内容由客户端注入（body 自带 .md 外壳，此处不再加 .md） -->
+  <div id="decrypted-content" hidden></div>
+</div>
+
+<script>
+  import { PBKDF2_ITERATIONS, SALT_LEN, IV_LEN, TAG_LEN } from '../lib/crypto-params';
+
+  // 冷却限制：连续输错 MAX_ATTEMPTS 次后锁定 LOCK_MS 毫秒
+  const MAX_ATTEMPTS = 5;
+  const LOCK_MS = 5 * 60 * 1000;
+  // 连续错误次数 n + 本次锁定截止时间戳 until（0 表示未锁定）
+  type LockState = { n: number; until: number };
+
+  const root = document.getElementById('encrypted-container');
+  if (root) {
+    const enc = new TextEncoder();
+    const b64ToBytes = (b64: string) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const payload = b64ToBytes(root.dataset.encrypted as string);
+    const salt = payload.subarray(0, SALT_LEN);
+    const iv = payload.subarray(SALT_LEN, SALT_LEN + IV_LEN);
+    const tag = payload.subarray(SALT_LEN + IV_LEN, SALT_LEN + IV_LEN + TAG_LEN);
+    const ciphertext = payload.subarray(SALT_LEN + IV_LEN + TAG_LEN);
+
+    const form = document.getElementById('password-form');
+    const input = document.getElementById('password-input') as HTMLInputElement | null;
+    const submitBtn = document.getElementById('password-submit') as HTMLButtonElement | null;
+    const errBox = document.getElementById('password-error');
+    const lockBox = document.getElementById('password-lock');
+    const ui = document.getElementById('password-ui');
+    const out = document.getElementById('decrypted-content');
+    const sessionKey = root.dataset.sessionKey as string;
+    const lockKey = `${sessionKey}:lock`;
+
+    async function decrypt(pwd: string) {
+      const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(pwd), 'PBKDF2', false, ['deriveKey']);
+      const key = await crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
+        keyMaterial,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['decrypt']
+      );
+      // WebCrypto 要求认证标签拼在密文尾部（Node 端 createCipheriv 单独返回 authTag）
+      const combined = new Uint8Array(ciphertext.length + TAG_LEN);
+      combined.set(ciphertext);
+      combined.set(tag, ciphertext.length);
+      const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, combined);
+      return JSON.parse(new TextDecoder().decode(plain));
+    }
+
+    // cache：成功后是否写入 sessionStorage
+    async function tryUnlock(pwd: string, cache: boolean) {
+      try {
+        const { body, toc } = await decrypt(pwd);
+        out.innerHTML = body;
+        // 解密后才注入目录并解除锁定，避免未解密就点亮底栏「目录」按钮
+        const nav = document.querySelector('#tocPanel nav');
+        if (nav && toc) nav.innerHTML = toc;
+        const panel = document.getElementById('tocPanel');
+        if (panel) delete panel.dataset.locked;
+        ui.hidden = true;
+        out.hidden = false;
+        if (cache) sessionStorage.setItem(sessionKey, pwd);
+        // 通知文章页同步目录按钮 + 内容增强重跑（代码块复制按钮 / 图片淡入）
+        window.dispatchEvent(new CustomEvent('lightaria:decrypted'));
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    // —— 冷却限制 ——
+    // 存在 localStorage 而非 sessionStorage：刷新页面 / 重开标签页不会重置计数
+
+    function readLock(): LockState {
+      try {
+        const raw = localStorage.getItem(lockKey);
+        if (!raw) return { n: 0, until: 0 };
+        const parsed = JSON.parse(raw) as Partial<LockState>;
+        const n = Number(parsed.n);
+        const until = Number(parsed.until);
+        return { n: Number.isFinite(n) ? n : 0, until: Number.isFinite(until) ? until : 0 };
+      } catch {
+        return { n: 0, until: 0 };
+      }
+    }
+
+    function writeLock(state: LockState) {
+      try {
+        localStorage.setItem(lockKey, JSON.stringify(state));
+      } catch {
+        // 隐私模式下 localStorage 不可用：退化为不记录，不影响解密本身
+      }
+    }
+
+    function fmtLeft(ms: number) {
+      const total = Math.ceil(ms / 1000);
+      return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+    }
+
+    let lockTimer: number | null = null;
+
+    // 按当前锁定状态刷新界面；冷却期内每秒刷新一次剩余时间
+    function renderLock() {
+      const { until } = readLock();
+      const left = until - Date.now();
+      if (left <= 0) {
+        if (lockTimer !== null) {
+          clearInterval(lockTimer);
+          lockTimer = null;
+        }
+        if (input) input.disabled = false;
+        if (submitBtn) submitBtn.disabled = false;
+        if (lockBox) lockBox.hidden = true;
+        return false;
+      }
+      if (input) input.disabled = true;
+      if (submitBtn) submitBtn.disabled = true;
+      if (errBox) errBox.hidden = true;
+      if (lockBox) {
+        lockBox.textContent = `密码错误次数过多，请等待 ${fmtLeft(left)} 后重试`;
+        lockBox.hidden = false;
+      }
+      if (lockTimer === null) lockTimer = window.setInterval(renderLock, 1000);
+      return true;
+    }
+
+    function recordFailure() {
+      const next = readLock().n + 1;
+      if (next >= MAX_ATTEMPTS) {
+        // 进入冷却：计数归零，冷却结束后重新获得完整次数
+        writeLock({ n: 0, until: Date.now() + LOCK_MS });
+        renderLock();
+        return;
+      }
+      writeLock({ n: next, until: 0 });
+      if (errBox) {
+        errBox.textContent = `密码错误，请重试（还有 ${MAX_ATTEMPTS - next} 次机会）`;
+        errBox.hidden = false;
+      }
+    }
+
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (renderLock()) return; // 冷却中：直接忽略提交
+      const pwd = input?.value;
+      if (!pwd) return;
+      if (errBox) errBox.hidden = true;
+      const ok = await tryUnlock(pwd, true);
+      if (ok) {
+        writeLock({ n: 0, until: 0 });
+        if (lockTimer !== null) {
+          clearInterval(lockTimer);
+          lockTimer = null;
+        }
+        return;
+      }
+      recordFailure();
+      if (input) {
+        input.value = '';
+        if (!renderLock()) input.focus();
+      }
+    });
+
+    // 同一会话内已输入过密码：自动解锁一次，失败则清掉缓存（自动尝试不计入错误次数）
+    const cached = sessionStorage.getItem(sessionKey);
+    if (cached) {
+      tryUnlock(cached, false).then((ok) => {
+        if (ok) writeLock({ n: 0, until: 0 });
+        else sessionStorage.removeItem(sessionKey);
+      });
+    }
+
+    renderLock();
+  }
+</script>
+
+<style>
+  .enc-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 4px;
+    margin: 8px auto 24px;
+    padding: 38px 26px 32px;
+    max-width: 460px;
+    border-radius: 18px;
+    background: var(--lg-accent);
+    border: 1px solid var(--lg-accent-border);
+  }
+  .enc-icon {
+    width: 46px;
+    height: 46px;
+    margin-bottom: 10px;
+    color: var(--lg-accent-solid);
+  }
+  .enc-icon svg {
+    width: 100%;
+    height: 100%;
+  }
+  .enc-title {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 600;
+  }
+  .enc-sub {
+    margin: 0;
+    font-size: 13px;
+    opacity: 0.72;
+  }
+  #password-form {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    margin-top: 18px;
+  }
+  #password-input {
+    flex: 1 1 180px;
+    min-width: 0;
+    padding: 10px 14px;
+    font-size: 14px;
+    color: inherit;
+    border-radius: 11px;
+    border: 1px solid var(--lg-accent-border);
+    background: rgba(255, 255, 255, 0.06);
+  }
+  #password-submit {
+    flex: 0 0 auto;
+    padding: 10px 22px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 11px;
+    border: 1px solid transparent;
+    color: #0e1420;
+    background: var(--lg-accent-solid);
+  }
+  .enc-hint {
+    margin: 14px 0 0;
+    font-size: 12.5px;
+    opacity: 0.66;
+  }
+  .enc-error {
+    margin: 12px 0 0;
+    font-size: 13px;
+    color: #ff8f8f;
+  }
+  #password-input:disabled,
+  #password-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+</style>
