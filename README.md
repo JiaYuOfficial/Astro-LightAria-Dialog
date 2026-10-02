@@ -44,6 +44,8 @@ npm run preview   # 本地预览构建产物
 
 部署：将 `dist/` 目录部署到任意静态托管平台（Cloudflare Pages / Netlify / Vercel / 自有服务器）。
 
+> ⚠️ 部署前请先把 `astro.config.mjs` 里的 `site` 从 `https://example.com` 改成你的正式域名，否则 canonical / OG / sitemap 都会指向错误地址。
+
 ## 📝 发布文章
 
 在 `src/content/works/` 下新建文件夹（文件夹名即分类），放入 `.md` 文件：

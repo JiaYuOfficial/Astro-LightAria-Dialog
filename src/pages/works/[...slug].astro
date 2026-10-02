@@ -281,6 +281,11 @@ const breadcrumbLd = {
         const r = tocPanel.getBoundingClientRect();
         ox = r.left; oy = r.top;
         e.preventDefault();
+        // 仅在拖拽期间挂载全局移动/结束监听，结束立即摘除（避免常驻 document 级监听）
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', endDrag);
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', endDrag);
       }
       function onMove(e) {
         if (!dragging) return;
@@ -296,13 +301,16 @@ const breadcrumbLd = {
         tocPanel.style.left = nx + 'px';
         tocPanel.style.top = ny + 'px';
       }
-      function endDrag() { dragging = false; }
+      function endDrag() {
+        if (!dragging) return;
+        dragging = false;
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', endDrag);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', endDrag);
+      }
       tocHeader.addEventListener('mousedown', startDrag);
-      document.addEventListener('mousemove', onMove);
-      document.addEventListener('mouseup', endDrag);
       tocHeader.addEventListener('touchstart', startDrag, { passive: false });
-      document.addEventListener('touchmove', onMove, { passive: false });
-      document.addEventListener('touchend', endDrag);
     }
 
     // 视频播放器：按视频真实比例适配（横屏 16:9 全宽 / 竖屏窄条居中），避免黑边
@@ -374,16 +382,16 @@ const breadcrumbLd = {
     }
 
     // 目录链接：按标题文本匹配滚动，向上偏移避开悬浮导航
-    document.addEventListener('click', (e) => {
-      const el = e.target.closest('[data-t]');
-      if (!el) return;
-      const text = el.dataset.t;
-      const heads = [...document.querySelectorAll('.md h2, .md h3')];
-      const target = heads.find((h) => h.textContent.trim() === text);
-      if (target) {
-        const y = target.getBoundingClientRect().top + window.scrollY - 84;
-        window.scrollTo({ top: Math.max(y, 0), behavior: 'smooth' });
-      }
+    // 目录项直接绑定点击（不再走 document 级事件委派）
+    document.querySelectorAll('[data-t]').forEach((el) => {
+      el.addEventListener('click', () => {
+        const heads = [...document.querySelectorAll('.md h2, .md h3')];
+        const target = heads.find((h) => h.textContent.trim() === el.dataset.t);
+        if (target) {
+          const y = target.getBoundingClientRect().top + window.scrollY - 84;
+          window.scrollTo({ top: Math.max(y, 0), behavior: 'smooth' });
+        }
+      });
     });
   </script>
 </BaseLayout>
