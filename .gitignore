@@ -1,7 +1,5 @@
-
-
-#其它
-firefly-encrypt-migration/
+# Trae 工作区（计划文档等，非源码）
+.trae/
 
 # 依赖
 node_modules/
@@ -34,5 +32,5 @@ Thumbs.db
 
 # 本地临时文件
 *.local
-.gitignore
+
 

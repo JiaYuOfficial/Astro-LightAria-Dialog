@@ -99,7 +99,7 @@ export const site = {
   comments: {
     enabled: false,
     service: 'twikoo', // twikoo | waline | artalk
-    serverURL: 'http://lty.0712v.top/', // Twikoo 的 envId / Waline 与 Artalk 的服务端地址
+    serverURL: 'https://your-comment-server.example.com/', // Twikoo 的 envId / Waline 与 Artalk 的服务端地址（接入时替换为真实地址）
     cdn: 'https://cdn.staticfile.org/twikoo/1.6.39/twikoo.all.min.js', // 评论前端库 CDN
     lang: 'zh-CN',
   },
