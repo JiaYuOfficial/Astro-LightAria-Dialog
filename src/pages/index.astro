@@ -1,92 +1,126 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
-import WorkCard from '../components/WorkCard.astro';
-import { getCollection } from 'astro:content';
-import { site } from '../config/site';
-import { getCategory } from '../lib/work';
+import BaseLayout from "../layouts/BaseLayout.astro";
+import WorkCard from "../components/WorkCard.astro";
+import { getCollection } from "astro:content";
+import { site } from "../config/site";
+import { getCategory } from "../lib/work";
 
-const works = (await getCollection('works')).sort(
-  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+const works = (await getCollection("works")).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
 );
 
 // —— SEO：主页 JSON-LD（站点 + 作品列表）——
-const siteBase = ((Astro.site && Astro.site.toString()) || '').replace(/\/$/, '');
+const siteBase = ((Astro.site && Astro.site.toString()) || "").replace(
+  /\/$/,
+  "",
+);
 const homeItems = works.slice(0, 12).map((w, i) => ({
-  '@type': 'ListItem',
+  "@type": "ListItem",
   position: i + 1,
   name: w.data.title,
   url: `${siteBase}/works/${w.id}/`,
 }));
 const websiteLd = {
-  '@context': 'https://schema.org',
-  '@type': 'WebSite',
+  "@context": "https://schema.org",
+  "@type": "WebSite",
   name: site.brand,
   description: site.description,
 };
 const listLd = {
-  '@context': 'https://schema.org',
-  '@type': 'ItemList',
-  name: '全部作品',
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  name: "全部作品",
   itemListElement: homeItems,
 };
 ---
 
-<BaseLayout title={site.title} image={site.logo} type="website" jsonLd={[websiteLd, listLd]}>
-  <main class="feed-wrap" data-def-feed={site.feed.mode} data-page-size={site.feed.pageSize}>
+<BaseLayout
+  title={site.title}
+  image={site.logo}
+  type="website"
+  jsonLd={[websiteLd, listLd]}
+>
+  <main
+    class="feed-wrap"
+    data-def-feed={site.feed.mode}
+    data-page-size={site.feed.pageSize}
+  >
     <h1 class="sr-only">{site.title}</h1>
     <div class="masonry" id="feed">
-      {works.map((w, i) => (
-        <div
-          class="feed-item"
-          data-cat={getCategory(w)}
-          data-type={w.data.type === 'photo' ? (w.data.images?.length ? 'gallery' : 'image') : w.data.type}
-          data-title={(w.data.title + getCategory(w)).toLowerCase()}
-        >
-          <WorkCard work={w} index={i} />
-        </div>
-      ))}
+      {
+        works.map((w, i) => (
+          <div
+            class="feed-item"
+            data-cat={getCategory(w)}
+            data-type={
+              w.data.type === "photo"
+                ? w.data.images?.length
+                  ? "gallery"
+                  : "image"
+                : w.data.type
+            }
+            data-title={(w.data.title + getCategory(w)).toLowerCase()}
+          >
+            <WorkCard work={w} index={i} />
+          </div>
+        ))
+      }
     </div>
-    <div class="empty" id="empty" hidden>没有匹配的案例喵～换个关键词试试？</div>
+    <div class="empty" id="empty" hidden>
+      没有匹配的案例喵～换个关键词试试？
+    </div>
     <div class="feed-pager" id="feedPager" hidden>
-      <button type="button" class="feed-pager__btn" id="feedPrev">‹ 上一页</button>
+      <button type="button" class="feed-pager__btn" id="feedPrev"
+        >‹ 上一页</button
+      >
       <div class="feed-pager__pages" id="feedPages"></div>
-      <button type="button" class="feed-pager__btn" id="feedNext">下一页 ›</button>
+      <button type="button" class="feed-pager__btn" id="feedNext"
+        >下一页 ›</button
+      >
     </div>
   </main>
 
   <script>
     // 分类筛选 + 搜索（标签面板与弹出搜索框由 BaseLayout 渲染）
-    const tagOpts = document.querySelectorAll('#tagPanel .tag-opt');
-    const items = document.querySelectorAll('.feed-item');
-    const search = document.getElementById('search');
-    const empty = document.getElementById('empty');
-    const feedPager = document.getElementById('feedPager');
-    const feedPrev = document.getElementById('feedPrev');
-    const feedNext = document.getElementById('feedNext');
-    const feedPages = document.getElementById('feedPages');
-    let activeTag = '全部';
-    let activeType = '全部';
-    let keyword = '';
+    const tagOpts =
+      document.querySelectorAll<HTMLElement>("#tagPanel .tag-opt");
+    const items = document.querySelectorAll<HTMLElement>(".feed-item");
+    const search = document.getElementById("search");
+    const empty = document.getElementById("empty");
+    const feedPager = document.getElementById("feedPager");
+    const feedPrev = document.getElementById(
+      "feedPrev",
+    ) as HTMLButtonElement | null;
+    const feedNext = document.getElementById(
+      "feedNext",
+    ) as HTMLButtonElement | null;
+    const feedPages = document.getElementById("feedPages");
+    let activeTag = "全部";
+    let activeType = "全部";
+    let keyword = "";
     // URL 直达：?cat=分类名 / ?type=类型（分享作品集链接，打开即筛选）
     const urlParams = new URLSearchParams(location.search);
-    const urlCat = urlParams.get('cat');
-    const urlType = urlParams.get('type');
+    const urlCat = urlParams.get("cat");
+    const urlType = urlParams.get("type");
 
     // 筛选变化时同步地址栏（分类 ?cat= / 类型 ?type=），便于复制当前筛选链接
     const syncUrl = () => {
       const u = new URL(location.href);
-      if (activeTag === '全部') u.searchParams.delete('cat');
-      else u.searchParams.set('cat', activeTag);
-      if (activeType === '全部') u.searchParams.delete('type');
-      else u.searchParams.set('type', activeType);
-      history.replaceState(null, '', u);
+      if (activeTag === "全部") u.searchParams.delete("cat");
+      else u.searchParams.set("cat", activeTag);
+      if (activeType === "全部") u.searchParams.delete("type");
+      else u.searchParams.set("type", activeType);
+      history.replaceState(null, "", u);
     };
 
     // 主页展示模式：'paged'（分页翻页）/ 'infinite'（无限流），与设置面板联动
-    const feedWrap = document.querySelector('.feed-wrap');
-    const DEF_FEED = feedWrap ? feedWrap.dataset.defFeed : 'paged';
-    const PAGE_SIZE = parseInt((feedWrap && feedWrap.dataset.pageSize) || '20', 10);
-    let feedMode = localStorage.getItem('lightaria-feed-mode') || DEF_FEED;
+    const feedWrap = document.querySelector<HTMLElement>(".feed-wrap");
+    const DEF_FEED = feedWrap ? feedWrap.dataset.defFeed : "paged";
+    const PAGE_SIZE = parseInt(
+      (feedWrap && feedWrap.dataset.pageSize) || "20",
+      10,
+    );
+    let feedMode = localStorage.getItem("lightaria-feed-mode") || DEF_FEED;
     let feedPage = 1; // 分页模式当前页
 
     // 先筛选匹配项，再按匹配结果分页（保证分类/搜索下分页正确）
@@ -94,28 +128,34 @@ const listLd = {
       const kw = keyword.trim().toLowerCase();
       const matched = [];
       items.forEach((el) => {
-        const okTag = activeTag === '全部' || el.dataset.cat === activeTag;
+        const okTag = activeTag === "全部" || el.dataset.cat === activeTag;
         const okType =
-          activeType === '全部' ||
-          (activeType === 'image' && (el.dataset.type === 'image' || el.dataset.type === 'article')) ||
+          activeType === "全部" ||
+          (activeType === "image" &&
+            (el.dataset.type === "image" || el.dataset.type === "article")) ||
           el.dataset.type === activeType;
-        const okKw = !kw || (el.dataset.title || '').includes(kw);
+        const okKw = !kw || (el.dataset.title || "").includes(kw);
         if (okTag && okType && okKw) matched.push(el);
       });
       const pageTotal = Math.max(1, Math.ceil(matched.length / PAGE_SIZE));
       if (feedPage > pageTotal) feedPage = pageTotal;
-      items.forEach((el) => { el.hidden = true; });
-      if (feedMode === 'infinite') {
-        matched.forEach((el) => { el.hidden = false; });
+      items.forEach((el) => {
+        el.hidden = true;
+      });
+      if (feedMode === "infinite") {
+        matched.forEach((el) => {
+          el.hidden = false;
+        });
       } else {
         matched.forEach((el, mi) => {
-          if (mi >= (feedPage - 1) * PAGE_SIZE && mi < feedPage * PAGE_SIZE) el.hidden = false;
+          if (mi >= (feedPage - 1) * PAGE_SIZE && mi < feedPage * PAGE_SIZE)
+            el.hidden = false;
         });
       }
       empty.hidden = matched.length > 0;
       // 翻页控件：分页模式且超过一页时显示（页码列表 + 上下页）
       if (feedPager) {
-        feedPager.hidden = feedMode !== 'paged' || pageTotal <= 1;
+        feedPager.hidden = feedMode !== "paged" || pageTotal <= 1;
         if (feedPrev) feedPrev.disabled = feedPage <= 1;
         if (feedNext) feedNext.disabled = feedPage >= pageTotal;
         if (feedPages) renderPages(pageTotal);
@@ -123,72 +163,95 @@ const listLd = {
     }
 
     // 页码序列：当前页 ±1 + 首尾页，间隙用省略号（1 2 3 ... 98 99 100）
-    function pageList(page, total) {
+    function pageList(page: number, total: number) {
       const set = new Set([1, total, page - 1, page, page + 1]);
-      const sorted = [...set].filter((n) => n >= 1 && n <= total).sort((a, b) => a - b);
+      const sorted = [...set]
+        .filter((n) => n >= 1 && n <= total)
+        .sort((a, b) => a - b);
       const out = [];
       let prev = 0;
       sorted.forEach((n) => {
-        if (n - prev > 1) out.push('...');
+        if (n - prev > 1) out.push("...");
         out.push(n);
         prev = n;
       });
       return out;
     }
-    function renderPages(total) {
-      feedPages.textContent = '';
+    function renderPages(total: number) {
+      feedPages.textContent = "";
       pageList(feedPage, total).forEach((p) => {
-        if (p === '...') {
-          const dot = document.createElement('span');
-          dot.className = 'feed-pager__dot';
-          dot.textContent = '…';
+        if (p === "...") {
+          const dot = document.createElement("span");
+          dot.className = "feed-pager__dot";
+          dot.textContent = "…";
           feedPages.appendChild(dot);
           return;
         }
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'feed-pager__page' + (p === feedPage ? ' feed-pager__page--active' : '');
-        if (p === feedPage) b.setAttribute('aria-current', 'page');
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className =
+          "feed-pager__page" +
+          (p === feedPage ? " feed-pager__page--active" : "");
+        if (p === feedPage) b.setAttribute("aria-current", "page");
         b.textContent = p;
-        b.addEventListener('click', () => { feedPage = p; apply(); });
+        b.addEventListener("click", () => {
+          feedPage = p;
+          apply();
+        });
         feedPages.appendChild(b);
       });
     }
 
-    feedPrev?.addEventListener('click', () => { if (feedPage > 1) { feedPage--; apply(); } });
-    feedNext?.addEventListener('click', () => { feedPage++; apply(); });
+    feedPrev?.addEventListener("click", () => {
+      if (feedPage > 1) {
+        feedPage--;
+        apply();
+      }
+    });
+    feedNext?.addEventListener("click", () => {
+      feedPage++;
+      apply();
+    });
 
     // 监听设置面板切换（BaseLayout 触发）
-    window.addEventListener('lightaria:feed', (e) => {
-      feedMode = e.detail;
+    window.addEventListener("lightaria:feed", (e) => {
+      feedMode = (e as CustomEvent).detail;
       feedPage = 1;
       apply();
     });
 
     tagOpts.forEach((t) =>
-      t.addEventListener('click', () => {
-        tagOpts.forEach((x) => { x.classList.remove('tag-opt--active'); x.setAttribute('aria-pressed', 'false'); });
-        t.classList.add('tag-opt--active');
-        t.setAttribute('aria-pressed', 'true');
+      t.addEventListener("click", () => {
+        tagOpts.forEach((x) => {
+          x.classList.remove("tag-opt--active");
+          x.setAttribute("aria-pressed", "false");
+        });
+        t.classList.add("tag-opt--active");
+        t.setAttribute("aria-pressed", "true");
         activeTag = t.dataset.tag;
         apply();
         syncUrl();
-      })
+      }),
     );
     // 类型筛选（主页底栏「筛选」）：图文/图集/视频
-    const typeOpts = document.querySelectorAll('#typePanel .tag-opt');
+    const typeOpts = document.querySelectorAll<HTMLElement>(
+      "#typePanel .tag-opt",
+    );
     typeOpts.forEach((t) =>
-      t.addEventListener('click', () => {
-        typeOpts.forEach((x) => { x.classList.remove('tag-opt--active'); x.setAttribute('aria-pressed', 'false'); });
-        t.classList.add('tag-opt--active');
-        t.setAttribute('aria-pressed', 'true');
+      t.addEventListener("click", () => {
+        typeOpts.forEach((x) => {
+          x.classList.remove("tag-opt--active");
+          x.setAttribute("aria-pressed", "false");
+        });
+        t.classList.add("tag-opt--active");
+        t.setAttribute("aria-pressed", "true");
         activeType = t.dataset.type;
         apply();
         syncUrl();
-      })
+      }),
     );
-    search?.addEventListener('input', (e) => {
-      keyword = e.target.value;
+    search?.addEventListener("input", (e) => {
+      keyword = (e.target as HTMLInputElement).value;
       apply();
     });
 
@@ -196,18 +259,24 @@ const listLd = {
     if (urlCat) {
       const target = Array.from(tagOpts).find((o) => o.dataset.tag === urlCat);
       if (target) {
-        tagOpts.forEach((x) => { x.classList.remove('tag-opt--active'); x.setAttribute('aria-pressed', 'false'); });
-        target.classList.add('tag-opt--active');
-        target.setAttribute('aria-pressed', 'true');
+        tagOpts.forEach((x) => {
+          x.classList.remove("tag-opt--active");
+          x.setAttribute("aria-pressed", "false");
+        });
+        target.classList.add("tag-opt--active");
+        target.setAttribute("aria-pressed", "true");
         activeTag = urlCat;
       }
     }
     if (urlType) {
       const t2 = Array.from(typeOpts).find((o) => o.dataset.type === urlType);
       if (t2) {
-        typeOpts.forEach((x) => { x.classList.remove('tag-opt--active'); x.setAttribute('aria-pressed', 'false'); });
-        t2.classList.add('tag-opt--active');
-        t2.setAttribute('aria-pressed', 'true');
+        typeOpts.forEach((x) => {
+          x.classList.remove("tag-opt--active");
+          x.setAttribute("aria-pressed", "false");
+        });
+        t2.classList.add("tag-opt--active");
+        t2.setAttribute("aria-pressed", "true");
         activeType = urlType;
       }
     }

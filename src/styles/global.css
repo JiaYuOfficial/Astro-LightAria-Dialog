@@ -415,6 +415,8 @@ body.layout-list .feed-item { margin-bottom: 10px; }
 body.layout-list .work-card { margin-bottom: 0; }
 body.layout-list .work-card a { display: flex; align-items: stretch; height: 128px; }
 body.layout-list .work-cover { width: 192px; height: 100%; aspect-ratio: auto !important; flex: none; }
+/* 列表模式封面图必须撑满封面框：#feed 始终带 .masonry 类，其 .work-cover img{height:auto} 会在此模式留下空带 */
+body.layout-list .work-cover img { height: 100%; }
 body.layout-list .cover-text__main { font-size: 14px; -webkit-line-clamp: 2; }
 body.layout-list .cover-text__sub { display: none; }
 body.layout-list .work-tag { left: 8px; top: 8px; font-size: 10.5px; padding: 2px 8px; }
