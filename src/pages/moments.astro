@@ -62,8 +62,8 @@ function yearLabel(d: Date) {
                     <div class="moment-text"><Content /></div>
                     {n > 0 && (
                       <div class={`moment-grid${n === 1 ? ' moment-grid--single' : ''}${n >= 5 ? ' moment-grid--many' : ''}`}>
-                        {m.data.images.map((src) => (
-                          <img class="moment-img" src={src} alt="" loading="lazy" decoding="async" />
+                        {m.data.images.map((src, i) => (
+                          <img class="moment-img" src={src} alt={m.data.title ? `${m.data.title} 图片 ${i + 1}` : `动态图片 ${i + 1}`} loading="lazy" decoding="async" />
                         ))}
                       </div>
                     )}
@@ -74,7 +74,7 @@ function yearLabel(d: Date) {
                       <>
                         <div class="moment-cmtbar">
                           <button type="button" class="moment-cmt-btn" data-target={`tcomment-${gi}`}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                             <span>评论</span>
                           </button>
                           <button type="button" class="moment-cmt-close" data-target={`tcomment-${gi}`}>收起评论</button>

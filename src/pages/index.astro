@@ -33,6 +33,7 @@ const listLd = {
 
 <BaseLayout title={site.title} image={site.logo} type="website" jsonLd={[websiteLd, listLd]}>
   <main class="feed-wrap" data-def-feed={site.feed.mode} data-page-size={site.feed.pageSize}>
+    <h1 class="sr-only">{site.title}</h1>
     <div class="masonry" id="feed">
       {works.map((w, i) => (
         <div
@@ -147,6 +148,7 @@ const listLd = {
         const b = document.createElement('button');
         b.type = 'button';
         b.className = 'feed-pager__page' + (p === feedPage ? ' feed-pager__page--active' : '');
+        if (p === feedPage) b.setAttribute('aria-current', 'page');
         b.textContent = p;
         b.addEventListener('click', () => { feedPage = p; apply(); });
         feedPages.appendChild(b);
@@ -165,8 +167,9 @@ const listLd = {
 
     tagOpts.forEach((t) =>
       t.addEventListener('click', () => {
-        tagOpts.forEach((x) => x.classList.remove('tag-opt--active'));
+        tagOpts.forEach((x) => { x.classList.remove('tag-opt--active'); x.setAttribute('aria-pressed', 'false'); });
         t.classList.add('tag-opt--active');
+        t.setAttribute('aria-pressed', 'true');
         activeTag = t.dataset.tag;
         apply();
         syncUrl();
@@ -176,8 +179,9 @@ const listLd = {
     const typeOpts = document.querySelectorAll('#typePanel .tag-opt');
     typeOpts.forEach((t) =>
       t.addEventListener('click', () => {
-        typeOpts.forEach((x) => x.classList.remove('tag-opt--active'));
+        typeOpts.forEach((x) => { x.classList.remove('tag-opt--active'); x.setAttribute('aria-pressed', 'false'); });
         t.classList.add('tag-opt--active');
+        t.setAttribute('aria-pressed', 'true');
         activeType = t.dataset.type;
         apply();
         syncUrl();
@@ -192,16 +196,18 @@ const listLd = {
     if (urlCat) {
       const target = Array.from(tagOpts).find((o) => o.dataset.tag === urlCat);
       if (target) {
-        tagOpts.forEach((x) => x.classList.remove('tag-opt--active'));
+        tagOpts.forEach((x) => { x.classList.remove('tag-opt--active'); x.setAttribute('aria-pressed', 'false'); });
         target.classList.add('tag-opt--active');
+        target.setAttribute('aria-pressed', 'true');
         activeTag = urlCat;
       }
     }
     if (urlType) {
       const t2 = Array.from(typeOpts).find((o) => o.dataset.type === urlType);
       if (t2) {
-        typeOpts.forEach((x) => x.classList.remove('tag-opt--active'));
+        typeOpts.forEach((x) => { x.classList.remove('tag-opt--active'); x.setAttribute('aria-pressed', 'false'); });
         t2.classList.add('tag-opt--active');
+        t2.setAttribute('aria-pressed', 'true');
         activeType = urlType;
       }
     }
