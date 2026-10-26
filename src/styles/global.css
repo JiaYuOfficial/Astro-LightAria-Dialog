@@ -456,8 +456,8 @@ body.layout-list .work-card:hover .work-arrow { color: var(--lg-accent-solid); t
   border-radius: var(--radius-lg);
   background: rgba(255,255,255,.14);
   border: 1px solid rgba(255,255,255,.30);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(160%);
+  backdrop-filter: blur(var(--lg-blur)) saturate(160%);
   box-shadow: inset 0 1px 1px rgba(255,255,255,.35), 0 8px 24px rgba(0,0,0,.45);
   animation: tocRise .3s cubic-bezier(.2,.8,.2,1);
 }
