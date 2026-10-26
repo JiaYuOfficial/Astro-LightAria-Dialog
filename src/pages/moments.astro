@@ -2,6 +2,9 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getCollection, render } from 'astro:content';
 import { site } from '../config/site';
+import { resolveSiteIdentity } from '../lib/site-identity';
+
+const identity = resolveSiteIdentity(site);
 
 // 动态按时间倒序
 const moments = (await getCollection('moments')).sort(
@@ -35,7 +38,7 @@ function yearLabel(d: Date) {
 }
 ---
 
-<BaseLayout title={`动态 · ${site.brand}`}>
+<BaseLayout title="动态">
   <main class="moments-wrap">
     <div class="moments-card">
       <h1 class="archive-title">动态</h1>
@@ -52,9 +55,13 @@ function yearLabel(d: Date) {
                   <div class="moment-dot"></div>
                   <div class="moment-body">
                     <div class="moment-head">
-                      <img class="moment-avatar" src="/avatar.svg" alt={site.user.name} loading="lazy" decoding="async" />
+                      {identity.user.avatar ? (
+                        <img class="moment-avatar" src={identity.user.avatar} alt={identity.user.name} loading="lazy" decoding="async" />
+                      ) : (
+                        <span class="moment-avatar" role="img" aria-label={identity.user.name}>{Array.from(identity.user.name)[0]}</span>
+                      )}
                       <div class="moment-head__info">
-                        <span class="moment-nick">{site.user.name}</span>
+                        <span class="moment-nick">{identity.user.name}</span>
                         <span class="moment-time">{timeStr(m.data.date)}</span>
                       </div>
                     </div>

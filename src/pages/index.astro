@@ -4,7 +4,9 @@ import WorkCard from "../components/WorkCard.astro";
 import { getCollection } from "astro:content";
 import { site } from "../config/site";
 import { getCategory } from "../lib/work";
+import { resolveSiteIdentity } from "../lib/site-identity";
 
+const identity = resolveSiteIdentity(site);
 const works = (await getCollection("works")).sort(
   (a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
 );
@@ -23,7 +25,7 @@ const homeItems = works.slice(0, 12).map((w, i) => ({
 const websiteLd = {
   "@context": "https://schema.org",
   "@type": "WebSite",
-  name: site.brand,
+  name: identity.name,
   description: site.description,
 };
 const listLd = {
@@ -35,8 +37,8 @@ const listLd = {
 ---
 
 <BaseLayout
-  title={site.title}
-  image={site.logo}
+  title={identity.name}
+  image={identity.logo}
   type="website"
   jsonLd={[websiteLd, listLd]}
 >
@@ -45,7 +47,7 @@ const listLd = {
     data-def-feed={site.feed.mode}
     data-page-size={site.feed.pageSize}
   >
-    <h1 class="sr-only">{site.title}</h1>
+    <h1 class="sr-only">{identity.name}</h1>
     <div class="masonry" id="feed">
       {
         works.map((w, i) => (

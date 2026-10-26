@@ -4,12 +4,14 @@ import EncryptedContent from '../../components/EncryptedContent.astro';
 import { getCollection, render } from 'astro:content';
 import { site } from '../../config/site';
 import { getCategory } from '../../lib/work';
+import { resolveSiteIdentity } from '../../lib/site-identity';
 
 export async function getStaticPaths() {
   const works = await getCollection('works');
   return works.map((w) => ({ params: { slug: w.id }, props: { work: w } }));
 }
 
+const identity = resolveSiteIdentity(site);
 const { work } = Astro.props;
 const { Content, headings } = await render(work);
 const all = await getCollection('works');
@@ -77,7 +79,7 @@ const breadcrumbLd = {
   '@context': 'https://schema.org',
   '@type': 'BreadcrumbList',
   itemListElement: [
-    { '@type': 'ListItem', position: 1, name: site.brand, item: siteBase + '/' },
+    { '@type': 'ListItem', position: 1, name: identity.name, item: siteBase + '/' },
     { '@type': 'ListItem', position: 2, name: category, item: `${siteBase}/?cat=${encodeURIComponent(category)}` },
     { '@type': 'ListItem', position: 3, name: title, item: workUrl },
   ],
@@ -85,7 +87,7 @@ const breadcrumbLd = {
 ---
 
 <BaseLayout
-  title={`${title} · ${site.brand}`}
+  title={title}
   description={pageDesc}
   image={seoImg}
   type={type === 'video' ? 'video.other' : 'article'}
@@ -157,8 +159,12 @@ const breadcrumbLd = {
       </div>
         <h1 class="article-title">{title}</h1>
         <div class="article-byline">
-          <img class="work-avatar" src="/avatar.svg" alt={site.user.name} loading="eager" decoding="async" />
-          <span>{site.user.name}</span>
+          {identity.user.avatar ? (
+            <img class="work-avatar" src={identity.user.avatar} alt={identity.user.name} loading="eager" decoding="async" />
+          ) : (
+            <span class="work-avatar" role="img" aria-label={identity.user.name}>{Array.from(identity.user.name)[0]}</span>
+          )}
+          <span>{identity.user.name}</span>
           <span class="sep">·</span>
           <span>{category}{type === 'video' ? ' · 视频' : type === 'photo' ? ' · 图集' : ' · 图文'}</span>
           <span class="sep">·</span>

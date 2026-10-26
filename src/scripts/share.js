@@ -60,6 +60,22 @@ function drawShareCard(title, tag, dateLine, cover, url, done) {
     ctx.stroke();
     ctx.restore();
   };
+  const drawAvatarInitial = () => {
+    const ay = coverH - 27;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(50, ay, 16, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,.18)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.35)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = '700 16px -apple-system,"PingFang SC",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(Array.from(USER.name || '')[0] || '', 50, ay + 5);
+    ctx.restore();
+  };
   const drawUserBar = () => {
     if (!USER.name && !USER.avatar) return;
     const barH = 54;
@@ -70,6 +86,7 @@ function drawShareCard(title, tag, dateLine, cover, url, done) {
     ctx.fillRect(0, coverH - barH, W, barH);
     const ay = coverH - 27;
     if (USER.avatar && AVATAR_IMG && AVATAR_IMG.complete && AVATAR_IMG.naturalWidth) drawAvatar(AVATAR_IMG);
+    else drawAvatarInitial();
     if (USER.name) {
       ctx.save();
       ctx.fillStyle = '#fff';
@@ -77,7 +94,7 @@ function drawShareCard(title, tag, dateLine, cover, url, done) {
       ctx.textAlign = 'left';
       ctx.shadowColor = 'rgba(0,0,0,.6)';
       ctx.shadowBlur = 6;
-      ctx.fillText(USER.name, 34 + (USER.avatar ? 42 : 0), ay + 5);
+      ctx.fillText(USER.name, 34 + 42, ay + 5);
       ctx.restore();
     }
   };

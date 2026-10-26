@@ -211,24 +211,75 @@ video: "https://example.com/video.mp4"
 
 ## ⚙️ 自定义配置
 
-所有站点配置集中在 [`src/config/site.ts`](src/config/site.ts)：
+所有站点配置集中在 [站点配置](<src/config/site.ts>)。**全站身份只填写四个字段**：`site.name`、`site.logo`、`site.user.name`、`site.user.avatar`，不要再为导航、分享卡片、关于页和友链重复填写。以下为四字段完整示例，合并到现有 `site` 对象中，其余配置保持不变：
+
+```ts
+export const site = {
+  name: '光影手记',          // 必填：全站站点名称
+  logo: '/avatar.svg',       // 站点 Logo，也用于 favicon 和默认分享图
+  user: {
+    name: '小光',            // 用户名字；留空时使用上面的站点名称
+    avatar: '',               // 用户头像；留空时使用上面的 Logo
+  },
+  // 其余现有配置保留……
+};
+```
+
+- `name` 去除首尾空白后必须非空；导航、页面标题、SEO、默认页脚及友链本站名称统一取此值。页面自己的标题由共享布局追加一次站点名。
+- `user.name` 留空或仅有空白时回退为 `name`。文章、动态、关于页和分享卡片共用这份用户身份。
+- `user.avatar` 留空时回退为 `logo`，**不是直接显示首字**；只有头像与 Logo 都为空时，才以最终显示名字的首字占位。
+- Logo 与头像可用站内图片路径或外链。站内图片放在 `public/`，配置路径省略 `public`。Logo / favicon 支持 SVG、PNG、JPG 等浏览器支持的图片格式，不再固定声明 SVG MIME；换用 PNG 时同时修改 `logo` 路径，不必改页面代码。
+- `profile` 仅配置关于页的一句话简介 `title`、基本信息 `basics` 和活跃统计 `activity`，不再保存名字或头像。介绍正文仍由 [关于页文案](<src/content/about/about.md>) 编写。
+
+### 旧配置迁移
+
+旧字段已删除，不再作为兼容别名读取：
+
+| 原字段 | 新位置或处理方式 |
+|---|---|
+| `site.title` / `site.brand` | 合并为 `site.name`；原来两者不同时，选定一个统一站点名 |
+| `site.profile.name` | 移到 `site.user.name`；已有用户名字时只保留一份 |
+| `site.profile.avatar` | 移到 `site.user.avatar`；留空则回退 Logo |
+| `site.friendsInfo.siteInfo` | 删除手填的名称、网址、Logo、描述；仅将额外行迁入 `site.friendsInfo.extraInfo` |
+
+`profile.title` 是关于页简介，不是已移除的顶层 `site.title`，请保留。文章 frontmatter 的 `title`、友链条目自己的 `name` / `avatar` 也不受此次迁移影响。
+
+### 友链本站信息自动派生
+
+友链页内置四行无需手填：**名称**来自 `site.name`，**网址**来自 [Astro 配置](<astro.config.mjs>) 的 `site`（即页面中的 `Astro.site`），**Logo**来自 `site.logo`（相对路径会转为站点绝对地址），**描述**来自 `site.description`。正式域名仍只在 Astro 配置里修改，不能用 `extraInfo` 代替。
+
+需要其他信息时在四行之后追加，例如：
+
+```ts
+friendsInfo: {
+  enabled: true,
+  extraInfo: [
+    { label: '联系', value: 'hello@example.com' },
+  ],
+  apply: '请在这里输入申请友链事项',
+},
+```
+
+`extraInfo` 只追加，不覆盖内置四行；`apply` 仍是申请友链的 Markdown 文案。
 
 | 配置 | 说明 |
 |---|---|
-| `title` / `brand` / `subtitle` | 站点标题与品牌 |
+| `name` / `logo` / `user.name` / `user.avatar` | 唯一的全站站点与用户身份配置 |
+| `subtitle` | 导航栏副标题，可留空 |
+| `description` | SEO 描述及友链本站描述 |
 | `background` / `showBackground` | 背景图与开关 |
 | `theme.accent` | 主题强调色 |
-| `user` / `profile` | 分享卡片与个人主页信息 |
-| `profile.activity.enabled` / `profile.activity.timeZone` | 关于页活跃日历的默认显示状态与统计时区（默认开启、`Asia/Shanghai`） |
+| `profile.title` / `profile.basics` | 仅关于页简介与基本信息 |
+| `profile.activity.enabled` / `profile.activity.timeZone` | 关于页活跃与统计的默认显示状态与统计时区（默认开启、`Asia/Shanghai`） |
 | `layoutDesktop` / `layoutMobile` | 默认布局 |
 | `style` / `glassBlur` / `bgDim` / `mdFontSize` | 默认样式与设置项默认值 |
 | `navTitle.desktop` / `navTitle.mobile` | 导航栏标题字号（桌面/手机端） |
 | `autoCategoryFromTitle` | 标题【】自动分类开关 |
 | `comments` | 评论系统（预留 Twikoo / Waline / Artalk） |
-| `friends` | 友情链接 |
+| `friends` / `friendsInfo.extraInfo` | 友链列表与本站额外信息 |
 | `pages` | 页面开关（隐藏导航按钮） |
 
-个人主页文案：`src/content/about/about.md`。动态：`src/content/moments/`。
+动态文件放在 [动态内容目录](<src/content/moments/>)。
 
 ### 关于页活跃与统计
 

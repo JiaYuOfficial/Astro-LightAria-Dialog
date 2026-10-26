@@ -1,7 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
-import { site } from '../config/site';
 import { getCategory } from '../lib/work';
 
 // 全部作品按日期倒序
@@ -42,7 +41,7 @@ function md(date: Date) {
 }
 ---
 
-<BaseLayout title={`归档 · ${site.brand}`}>
+<BaseLayout title="归档">
   <main class="archive-wrap">
     <div class="archive-card">
       <h1 class="archive-title">归档</h1>

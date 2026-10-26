@@ -245,9 +245,56 @@ npm run preview  # 本地预览构建产物，地址以终端输出为准
 
 正式部署前还需要：
 
-1. 将 `astro.config.mjs` 的 `site` 从演示地址改成正式域名。
-2. 在 `src/config/site.ts` 填写品牌、个人资料等配置；如需搜索引擎收录，将 `noindex` 改为 `false`。
+1. 将 `astro.config.mjs` 的 `site` 从演示地址改成正式域名；canonical、分享链接和友链本站网址均使用此地址。
+2. 在 `src/config/site.ts` 填写下述统一身份字段；如需搜索引擎收录，将 `noindex` 改为 `false`。
 3. 如需允许抓取，移除或调整 `public/robots.txt` 中的 `Disallow: /`；仅关闭 `noindex` 不会解除此限制。
 4. 配置修改后重新构建，再部署新的 `dist/` 产物。
+
+### 统一站点与用户身份
+
+以下四字段示例合并到现有 `site` 对象中，其他配置保持不变：
+
+```ts
+export const site = {
+  name: '光影手记',             // 必填站点名称
+  logo: '/avatar.svg',          // 站点 Logo，也用于 favicon 与默认分享图
+  user: {
+    name: '小光',              // 留空时回退为站点名称
+    avatar: '',                 // 留空时回退为站点 Logo
+  },
+  // 其余现有配置保留……
+};
+```
+
+站点名称用于导航、页面标题、SEO、默认页脚和友链本站信息；`user` 的名字与头像用于文章、动态、关于页和分享卡片，不需要为各页重复填写。字段会去除首尾空白，站点名称不能全为空白。**头像为空时先使用 Logo，只有头像和 Logo 都为空时，才用最终显示名字的首字占位。**
+
+Logo / favicon 不限定 SVG，PNG、JPG 等浏览器支持的格式也可使用；不再写死 SVG MIME。自己的本地图片放入 `public/`，配置中使用不含 `public` 的路径，例如放入 PNG 后将 `logo` 改为 `/images/my-logo.png`，也可填写图片外链。
+
+关于页 `profile` 仅保留一句话简介 `title`、基本信息列表 `basics` 和活跃统计配置 `activity`，名字与头像统一读取 `user`；介绍正文在 `src/content/about/about.md` 编写。
+
+### 从旧字段迁移
+
+- 将旧顶层 `site.title`、`site.brand` 合并为一个 `site.name`；两者原值不同时选择一个统一名称，旧字段已不再读取。
+- 将 `site.profile.name`、`site.profile.avatar` 移到 `site.user.name`、`site.user.avatar`，不要再保留两套身份配置。
+- `profile.title` 仍表示关于页简介，不是已删除的顶层 `site.title`；文章和动态 frontmatter 的 `title` 也保持原样。
+- 删除 `friendsInfo.siteInfo`：内置「名称／网址／Logo／描述」现在自动生成，只将其他额外行迁入 `friendsInfo.extraInfo`。
+
+### 友链本站信息
+
+四个内置行分别取自 `site.name`、`astro.config.mjs` 的 `site`（页面中的 `Astro.site`）、`site.logo` 和 `site.description`。Logo 的相对路径会转为绝对地址，无需再手填一次；正式域名仍在 Astro 配置中修改。
+
+需要增加其他信息时，在内置四行之后追加：
+
+```ts
+friendsInfo: {
+  enabled: true,
+  extraInfo: [
+    { label: '联系', value: 'hello@example.com' },
+  ],
+  apply: '请在这里输入申请友链事项',
+},
+```
+
+`extraInfo` 不会覆盖内置行，不要用它重复维护名称或网址。`apply` 仍是可自由编写的 Markdown 申请说明。
 
 欢迎使用 LightAria，祝你拍出光与影的对白 📷

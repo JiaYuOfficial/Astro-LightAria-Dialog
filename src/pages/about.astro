@@ -3,29 +3,31 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import ActivityHeatmap from '../components/ActivityHeatmap.astro';
 import { getCollection, render } from 'astro:content';
 import { site } from '../config/site';
+import { resolveSiteIdentity } from '../lib/site-identity';
 
 // 个人主页（简历）：大头像 + 基本信息（site.ts profile 配置） + 介绍文案（about.md）
 const abouts = await getCollection('about');
 const page = abouts[0] || null;
 const { Content } = page ? await render(page) : { Content: null };
 const p = site.profile;
+const identity = resolveSiteIdentity(site);
 ---
 
-<BaseLayout title={`关于 · ${site.brand}`}>
+<BaseLayout title="关于">
   <main class="about-wrap">
     <div class="about-card">
       <div class="about-grid">
         <!-- 左侧：大头像矩形 -->
         <div class="about-photo">
-          {p.avatar ? (
-            <img src={p.avatar} alt={p.name} loading="eager" decoding="async" />
+          {identity.user.avatar ? (
+            <img src={identity.user.avatar} alt={identity.user.name} loading="eager" decoding="async" />
           ) : (
-            <div class="about-photo__ph">{p.name.slice(0, 1)}</div>
+            <div class="about-photo__ph">{Array.from(identity.user.name)[0] || ''}</div>
           )}
         </div>
         <!-- 右侧：基本信息矩形 -->
         <div class="about-info">
-          <h1 class="about-name">{p.name}</h1>
+          <h1 class="about-name">{identity.user.name}</h1>
           {p.title && <p class="about-title">{p.title}</p>}
           {p.basics.length > 0 && (
             <dl class="about-basics">

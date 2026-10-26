@@ -3,6 +3,9 @@ import "../styles/global.css";
 import { getCollection } from "astro:content";
 import { site } from "../config/site";
 import { getCategory } from "../lib/work";
+import { absoluteAssetUrl, formatPageTitle, resolveSiteIdentity } from "../lib/site-identity";
+
+const identity = resolveSiteIdentity(site);
 
 interface Props {
   title?: string;
@@ -14,18 +17,19 @@ interface Props {
   noindex?: boolean; // 强制本页 noindex（加密文章用；正式站关闭全站 noindex 后仍生效）
 }
 const {
-  title = site.title,
+  title = identity.name,
   description = site.description,
   image = "",
   type = "website",
   jsonLd = [],
   noindex = false,
 } = Astro.props;
+const pageTitle = formatPageTitle(title, identity.name);
 // 绝对 URL 基础（canonical/og:image 用）：部署域名来自 astro.config 的 site
 const baseUrl = Astro.site ? Astro.site.toString().replace(/\/$/, "") : "";
 const canonicalUrl = baseUrl + Astro.url.pathname;
-const absUrl = (u: string) => (u.startsWith("http") ? u : baseUrl + u);
-const ogImage = absUrl(image || site.logo || "");
+const absUrl = (u: string) => absoluteAssetUrl(u, Astro.site?.toString() || Astro.url.origin + "/");
+const ogImage = absUrl(image || identity.logo);
 // 首页时不显示底栏「返回主页」
 const isHome =
   Astro.url.pathname === "/" || Astro.url.pathname.endsWith("/index.html");
@@ -68,17 +72,17 @@ const themeCss = `
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0e1420" />
-    <title>{title}</title>
+    <title>{pageTitle}</title>
     <meta name="description" content={description} />
     <meta
       name="robots"
       content={site.noindex || noindex ? "noindex,nofollow" : "index,follow"}
     />
     <link rel="canonical" href={canonicalUrl} />
-    <link rel="icon" type="image/svg+xml" href="/avatar.svg" />
+    {identity.logo && <link rel="icon" href={identity.logo} />}
     <!-- Open Graph / 社交分享（微信/浏览器分享卡片依赖） -->
-    <meta property="og:site_name" content={site.title} />
-    <meta property="og:title" content={title} />
+    <meta property="og:site_name" content={identity.name} />
+    <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content={type} />
     <meta property="og:url" content={canonicalUrl} />
@@ -148,17 +152,21 @@ const themeCss = `
       )
     }
     {
-      (site.user?.name || site.user?.avatar) && (
-        <script is:inline define:vars={{ userCfg: site.user }}>
+      (identity.user.name || identity.user.avatar) && (
+        <script is:inline define:vars={{ userCfg: identity.user }}>
           window.__USER__ = userCfg;
         </script>
       )
     }
     <!-- 顶部导航：品牌 + 操作按钮（分类 / 归档 / 搜索） -->
     <nav class="lg-nav">
-      <a class="lg-nav__brand" href="/"
-        >{site.brand}{site.subtitle && <small>{site.subtitle}</small>}</a
-      >
+      <a class="lg-nav__brand" href="/" aria-label={`${identity.name} 首页`}>
+        {identity.logo && <img class="lg-nav__logo" data-site-logo src={identity.logo} alt="" width="32" height="32" decoding="async" />}
+        <span class="lg-nav__identity">
+          <span class="lg-nav__name">{identity.name}</span>
+          {site.subtitle && <small>{site.subtitle}</small>}
+        </span>
+      </a>
 
       <div class="lg-nav__actions">
         {
@@ -295,7 +303,7 @@ const themeCss = `
     <slot />
 
     <div class="foot">
-      <span>{site.footer.text || site.brand}</span>
+      <span>{site.footer.text || identity.name}</span>
       {
         site.footer.icp && (
           <a

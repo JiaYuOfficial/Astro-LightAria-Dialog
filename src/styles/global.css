@@ -94,11 +94,14 @@ img { max-width: 100%; }
   box-shadow: var(--lg-shadow);
 }
 .lg-nav__brand {
-  display: inline-flex; align-items: baseline; gap: 10px;
+  display: inline-flex; align-items: center; gap: 10px; min-width: 0; max-width: 100%;
   font-size: var(--nav-title-d, 25px); font-weight: 800; letter-spacing: .5px; white-space: nowrap; cursor: pointer;
   text-shadow: 0 2px 8px rgba(0,0,0,.35);
 }
-.lg-nav__brand small { font-size: 13px; font-weight: 400; color: var(--lg-text-dim); letter-spacing: 1px; }
+.lg-nav__logo { width: 32px; height: 32px; object-fit: contain; flex: none; border-radius: 6px; }
+.lg-nav__identity { display: inline-flex; align-items: baseline; gap: 10px; min-width: 0; }
+.lg-nav__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.lg-nav__brand small { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 13px; font-weight: 400; color: var(--lg-text-dim); letter-spacing: 1px; }
 .lg-nav__search { flex: 1; min-width: 0; }
 
 /* 分类 tab 块：透明容器，每个 tab 自带玻璃胶囊 + 左右箭头滚动 + 自适应换行 */
@@ -403,6 +406,7 @@ body.layout-masonry.feed-anim .work-card { animation: rise .5s cubic-bezier(.2,.
   border: 1px solid rgba(255,255,255,.4);
   flex: none;
 }
+span.work-avatar, span.moment-avatar { display: inline-flex; align-items: center; justify-content: center; background: var(--lg-glass); color: var(--lg-accent-solid); font-weight: 700; }
 .work-author { font-size: 12px; color: var(--lg-text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .work-likes { margin-left: auto; font-size: 12px; color: var(--lg-text-dim); display: inline-flex; align-items: center; gap: 4px; flex: none; }
 .work-likes svg { width: 13px; height: 13px; fill: rgba(255,120,120,.9); }
@@ -1161,6 +1165,8 @@ body { padding-bottom: calc(86px + env(safe-area-inset-bottom)); }
   .lg-nav { padding: 8px 11px; gap: 7px; }
   .lg-nav__brand { font-size: var(--nav-title-m, 15px); gap: 7px; }
   .lg-nav__brand small { font-size: 11px; }
+  .lg-nav__logo { width: 26px; height: 26px; }
+  .lg-nav__identity { gap: 7px; }
   .lg-search-btn { width: 30px; height: 30px; }
   .feed-wrap { padding: 0 8px; margin: 10px auto 52px; }
   .masonry { column-gap: 6px; }
@@ -1295,7 +1301,7 @@ body.layout-compact .work-card:hover .work-arrow { color: var(--lg-accent-solid)
 }
 .moment-body:hover { border-color: var(--lg-border-hover); }
 .moment-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.moment-avatar { width: 34px; height: 34px; border-radius: var(--radius-round); border: 1px solid rgba(255,255,255,.3); flex: none; }
+.moment-avatar { width: 34px; height: 34px; object-fit: cover; border-radius: var(--radius-round); border: 1px solid rgba(255,255,255,.3); flex: none; }
 .moment-head__info { display: flex; flex-direction: column; }
 .moment-nick { font-size: 14px; font-weight: 700; color: #fff; }
 .moment-time { font-size: 11.5px; color: var(--lg-text-faint); }

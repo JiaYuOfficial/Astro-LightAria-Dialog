@@ -4,8 +4,16 @@
 // ============================================================
 
 export const site = {
-  // 主标题（浏览器标签页标题 / SEO）
-  title: 'LightAria',
+  // —— 全站身份：名称、Logo、用户名字和头像各只在这里填写一次 ——
+  // 站点名称（必填）：导航、浏览器标题、SEO、页脚与友链本站信息统一使用
+  name: 'LightAria',
+  // 站点 Logo：支持 SVG / PNG / JPG 等；导航、favicon、默认分享图与友链统一使用
+  logo: '/avatar.svg',
+  // 用户身份：文章、动态、关于页和分享卡片统一使用
+  user: {
+    name: 'LightAria', // 留空时回退为站点名称
+    avatar: '', // 留空时统一使用站点 Logo；两者均留空则使用名字首字占位
+  },
 
   // 搜索引擎收录：正式版 false（index）；测试/演示版 true（noindex 不收录）
   noindex: true,
@@ -15,24 +23,11 @@ export const site = {
   // SEO 描述（meta description）
   description: '摄影作品集 · 人像 / 风光 / 纪实 / 视频 —— 光与影的对白',
 
-  // 网站 Logo 图（自定义，如 /images/logo.png；友链信息块 Logo 行默认取此值）
-  logo: '/avatar.svg',
-
-  // 导航栏品牌名（左上角大字）
-  brand: 'LightAria',
-
   // 导航栏标题字号（px）：desktop 桌面端 / mobile 手机端（≤880px 生效）
   navTitle: {
     desktop: 25,
     mobile: 15,
   },
-
-  // 用户信息（分享卡片封面底部信息压条：头像 + 昵称；avatar 留空则不显示头像）
-  user: {
-    name: 'LightAria',
-    avatar: '', // 头像图 URL（如 /images/avatar.jpg），留空仅显示昵称
-  },
-
 
   // 导航栏副标题（品牌下方小字，可留空）
   subtitle: '',  // 留空则不显示副标题
@@ -121,9 +116,8 @@ export const site = {
   // 个人主页（简历）页配置：/about/
   // 左侧大头像 + 右侧基本信息；底部「关于我」介绍文案由 src/content/about/about.md 编写
   profile: {
-    name: '你的名字', // 显示名（大头像下主标题）
+    // 名字与头像统一读取上方 user，不再在个人主页重复配置
     title: '用镜头记录光与影的对白', // 一句话简介（基本信息上方）
-    avatar: '', // 大头像图 URL（如 /images/profile.jpg），留空显示首字占位
     // 活跃与统计区：左侧约半年日历、右侧全站内容环图；设置面板可覆盖显示偏好
     activity: {
       enabled: true, // 默认显示；访客可在「设置 → 关于页活跃与统计」中一起切换
@@ -149,16 +143,11 @@ export const site = {
   },
 
   // 友链页「本站信息 + 申请友链」区块（友链列表上方，可自定义；enabled 关闭则隐藏）
-  // siteInfo: 矩形复制行数组（label + value，右键复制 value）
-  // apply: 整段 Markdown 文本，自由发挥
+  // 名称 / Logo / 描述自动读取全站配置，网址来自 astro.config.mjs 的 site
+  // extraInfo: 可选的额外复制行，不需要重复填写上述内置信息
   friendsInfo: {
     enabled: true,
-    siteInfo: [
-      { label: '名称', value: 'LightAria' },
-      { label: '网址', value: 'https://example.com' },
-      { label: 'Logo', value: 'https://example.com/avatar.svg' },
-      { label: '描述', value: '光影咏叹调 · 摄影作品集静态博客' },
-    ],
+    extraInfo: [] as { label: string; value: string }[],
     apply: '请在这里输入申请友链事项',
   },
 

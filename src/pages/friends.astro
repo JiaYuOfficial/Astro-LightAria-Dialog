@@ -1,9 +1,12 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { site } from '../config/site';
+import { buildSiteInfo } from '../lib/site-identity';
+
+const siteInfo = buildSiteInfo(site, Astro.site?.toString() || Astro.url.origin, site.friendsInfo.extraInfo);
 ---
 
-<BaseLayout title={`友情链接 · ${site.brand}`}>
+<BaseLayout title="友情链接">
   <main class="archive-wrap">
     <div class="archive-card">
       <h1 class="archive-title">友情链接</h1>
@@ -11,9 +14,8 @@ import { site } from '../config/site';
       {site.friendsInfo?.enabled && (
         <section class="friends-info">
           <div class="friends-info__site">
-            {site.friendsInfo.siteInfo.map((row) => {
-              const isLogo = /logo/i.test(row.label);
-              const val = isLogo ? site.logo : row.value;
+            {siteInfo.map((row) => {
+              const val = row.value;
               return (
                 <div class="friends-info__row">
                   <span class="friends-info__label">{row.label}</span>
