@@ -725,13 +725,13 @@ body.style-flat .lg-btn {
 }
 .article-title { margin: 0 auto 10px; max-width: 920px; font-size: 24px; font-weight: 700; line-height: 1.4; letter-spacing: .3px; }
 .article-byline {
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap;
   max-width: 920px; margin: 0 auto;
-  padding-bottom: 16px; margin-bottom: 20px;
+  padding-bottom: 18px; margin-bottom: 20px;
   border-bottom: 1px solid rgba(255,255,255,.12);
-  font-size: 12.5px; color: var(--lg-text-dim);
+  font-size: 16px; line-height: 1.5; color: var(--lg-text-dim);
 }
-.article-byline .work-avatar { width: 22px; height: 22px; }
+.article-byline .work-avatar { width: 28px; height: 28px; }
 .article-byline .sep { color: var(--lg-text-faint); }
 
 /* Markdown 正文排版 */
