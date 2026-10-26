@@ -476,6 +476,9 @@ body.layout-list .work-card:hover .work-arrow { color: var(--lg-accent-solid); t
 .tag-opt:hover { background: rgba(255,255,255,.2); }
 .tag-opt--active { background: var(--lg-accent-solid); border-color: var(--lg-accent-border); font-weight: 600; }
 
+/* 活跃记录首屏遵循已保存的隐藏偏好；具体显示状态由设置模块同步。 */
+html[data-activity="off"] [data-activity-heatmap] { display: none !important; }
+
 /* ---------- 设置面板（底栏弹出，同目录面板风格） ---------- */
 .settings-panel {
   position: fixed;
@@ -539,6 +542,7 @@ body.layout-list .work-card:hover .work-arrow { color: var(--lg-accent-solid); t
   color: var(--lg-text-dim);
   padding-left: 3px;
 }
+.settings-group__hint { color: var(--lg-text-dim); font-size: 11px; line-height: 1.6; padding-left: 3px; }
 .settings-group--slider { gap: 4px; }
 .settings-group--slider input[type="range"] {
   width: 100%;

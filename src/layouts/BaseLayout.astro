@@ -61,6 +61,7 @@ const themeCss = `
 <!doctype html>
 <html
   lang="zh-CN"
+  data-activity={site.profile.activity.enabled ? "on" : "off"}
   style={`--nav-title-d:${site.navTitle?.desktop ?? 25}px;--nav-title-m:${site.navTitle?.mobile ?? 15}px`}
 >
   <head>
@@ -97,6 +98,17 @@ const themeCss = `
     }
     <!-- 站点色系：由 src/config/site.ts 的 theme.accent 派生 -->
     <style is:global set:html={themeCss}></style>
+    <!-- 首屏先恢复活跃记录偏好，避免隐藏设置在脚本加载前短暂闪现 -->
+    <script is:inline>
+      try {
+        const activityPreference = localStorage.getItem("lightaria-activity");
+        if (activityPreference === "on" || activityPreference === "off") {
+          document.documentElement.dataset.activity = activityPreference;
+        }
+      } catch {
+        // 存储不可用时使用站点配置的默认值。
+      }
+    </script>
 
     <!-- 性能：预连接媒体域名（图床/视频 CDN），减少 TLS 握手延迟 -->
     {
@@ -119,6 +131,7 @@ const themeCss = `
     data-default-font={site.mdFontSize}
     data-default-feed={site.feed.mode}
     data-default-accent={site.theme.accent}
+    data-default-activity={site.profile.activity.enabled}
   >
     {
       site.comments.enabled && (
@@ -640,6 +653,26 @@ const themeCss = `
             >无限流</button
           >
         </div>
+      </div>
+      <div class="settings-group" role="group" aria-labelledby="activitySettingLabel" aria-describedby="activitySettingHint">
+        <span class="settings-group__label" id="activitySettingLabel">关于页活跃与统计</span>
+        <div class="layout-options">
+          <button
+            type="button"
+            class="layout-opt"
+            data-activity="on"
+            aria-pressed={site.profile.activity.enabled}
+            aria-controls={Astro.url.pathname.startsWith("/about") ? "activityHeatmap" : undefined}
+          >显示</button>
+          <button
+            type="button"
+            class="layout-opt"
+            data-activity="off"
+            aria-pressed={!site.profile.activity.enabled}
+            aria-controls={Astro.url.pathname.startsWith("/about") ? "activityHeatmap" : undefined}
+          >隐藏</button>
+        </div>
+        <small class="settings-group__hint" id="activitySettingHint">活跃图与环图一起切换，选择保存在此浏览器。</small>
       </div>
       <div class="settings-group settings-group--slider">
         <span class="settings-group__label">正文字号</span>

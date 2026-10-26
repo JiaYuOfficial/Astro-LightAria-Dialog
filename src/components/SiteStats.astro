@@ -1,0 +1,168 @@
+---
+import { getCollection } from 'astro:content';
+import { aggregateSiteStats, describeSiteStat, siteStatArcPath } from '../lib/site-stats';
+
+const [works, moments] = await Promise.all([getCollection('works'), getCollection('moments')]);
+// Never serialize entries: only these four public aggregate counts reach the markup.
+const stats = aggregateSiteStats(works.map(({ data }) => ({ type: data.type, images: data.images })), moments);
+---
+
+<figure class="site-stats" data-site-stats aria-label="全站内容分类统计">
+  <svg class="site-stats-ring" viewBox="0 0 128 128" width="136" height="136" role="group" aria-label="动态、视频、图文、图集占比环图">
+    <circle class="site-stats-track" cx="64" cy="64" r="44.5" fill="none" stroke-width="19" aria-hidden="true" />
+    {stats.categories.filter((category) => category.count > 0).map((category) => (
+      <path
+        class="site-stats-arc"
+        d={siteStatArcPath(category.startAngle, category.endAngle)}
+        fill-rule="evenodd"
+        data-stat-key={category.key}
+        data-stat-count={category.count}
+        data-stat-percent={category.percent}
+        aria-label={describeSiteStat(category)}
+        role="button"
+        tabindex="-1"
+      ><title>{describeSiteStat(category)}</title></path>
+    ))}
+  </svg>
+  <figcaption class="site-stats-legend">
+    {stats.categories.map((category) => (
+      <button
+        type="button"
+        class="site-stats-label"
+        data-stat-key={category.key}
+        data-stat-count={category.count}
+        data-stat-percent={category.percent}
+        aria-label={describeSiteStat(category)}
+        title={describeSiteStat(category)}
+      >
+        <span class="site-stats-dot" aria-hidden="true" />
+        <span>{category.label}</span>
+      </button>
+    ))}
+  </figcaption>
+  <template data-site-stats-tooltip-template><div class="site-stats-tooltip" role="tooltip" hidden /></template>
+</figure>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-site-stats]').forEach((root, index) => {
+    const template = root.querySelector<HTMLTemplateElement>('[data-site-stats-tooltip-template]')!;
+    // A body portal escapes the parent's backdrop-filter fixed-position containing block.
+    const tooltip = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
+    tooltip.id = `siteStatsTooltip-${index}`;
+    tooltip.setAttribute('aria-hidden', 'true');
+    document.body.append(tooltip);
+    const controls = [...root.querySelectorAll<HTMLElement | SVGElement>('[data-stat-key]')];
+    let anchor: Element | null = null;
+    let pinned = false;
+    const hide = () => {
+      tooltip.hidden = true;
+      tooltip.setAttribute('aria-hidden', 'true');
+      anchor?.removeAttribute('aria-describedby');
+      anchor = null;
+      pinned = false;
+      controls.forEach((element) => element.classList.remove('is-active'));
+    };
+    const controlFrom = (target: EventTarget | null) => {
+      const control = target instanceof Element ? target.closest('[data-stat-key]') : null;
+      return control && root.contains(control) ? control : null;
+    };
+    const show = (control: Element) => {
+      if (root.closest('[hidden]') || document.documentElement.dataset.activity === 'off') return;
+      anchor?.removeAttribute('aria-describedby');
+      anchor = control;
+      const key = control.getAttribute('data-stat-key');
+      controls.forEach((element) => element.classList.toggle('is-active', element.getAttribute('data-stat-key') === key));
+      tooltip.textContent = control.getAttribute('aria-label') || '';
+      tooltip.hidden = false;
+      tooltip.setAttribute('aria-hidden', 'false');
+      control.setAttribute('aria-describedby', tooltip.id);
+      const rect = control.getBoundingClientRect();
+      const width = tooltip.offsetWidth;
+      const height = tooltip.offsetHeight;
+      const left = Math.max(12, Math.min(rect.left + rect.width / 2 - width / 2, window.innerWidth - width - 12));
+      const above = rect.top - height - 10;
+      const preferredTop = above >= 12 ? above : rect.bottom + 10;
+      const top = Math.max(12, Math.min(preferredTop, window.innerHeight - height - 12));
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${top}px`;
+    };
+    // Keep native titles for no-JS visitors, but avoid duplicate tooltips once enhanced.
+    controls.forEach((control) => {
+      control.removeAttribute('title');
+      control.querySelector('title')?.remove();
+    });
+    root.addEventListener('pointerover', (event) => {
+      if (event.pointerType === 'touch') return;
+      const control = controlFrom(event.target);
+      if (control) { pinned = false; show(control); }
+      else hide();
+    });
+    root.addEventListener('pointerleave', (event) => { if (event.pointerType !== 'touch') hide(); });
+    root.addEventListener('focusin', (event) => {
+      const control = controlFrom(event.target);
+      if (control) { pinned = false; show(control); }
+    });
+    root.addEventListener('focusout', (event) => {
+      if (!controlFrom(event.relatedTarget)) hide();
+    });
+    root.addEventListener('click', (event) => {
+      const control = controlFrom(event.target);
+      if (!control) { hide(); return; }
+      if (pinned && anchor === control) hide();
+      else { show(control); pinned = true; }
+    });
+    root.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') { hide(); return; }
+      const control = controlFrom(event.target);
+      // SVG paths are pointer targets, not extra Tab stops; legends are native buttons.
+      if (control instanceof SVGElement && (event.key === 'Enter' || event.key === ' ')) {
+        event.preventDefault();
+        show(control);
+      }
+    });
+    document.addEventListener('pointerdown', (event) => { if (!controlFrom(event.target)) hide(); });
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape') hide(); });
+    document.addEventListener('scroll', hide, { capture: true, passive: true });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) hide(); });
+    window.addEventListener('resize', hide);
+    window.addEventListener('pagehide', hide);
+    window.addEventListener('lightaria:activity', (event) => {
+      if (!(event as CustomEvent<boolean>).detail) hide();
+    });
+  });
+</script>
+
+<style>
+  .site-stats {
+    --stat-moment: color-mix(in srgb, var(--lg-accent-solid) 62%, #fff);
+    --stat-video: var(--lg-accent-solid);
+    --stat-article: color-mix(in srgb, var(--lg-accent-solid) 76%, #172438);
+    --stat-gallery: color-mix(in srgb, var(--lg-accent-solid) 45%, #172438);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+    max-width: 250px;
+    min-width: 0;
+    margin: 0 auto;
+    padding: 0;
+    background: transparent;
+  }
+  .site-stats-ring { display: block; width: 136px; height: auto; flex: 0 1 136px; min-width: 0; overflow: visible; }
+  .site-stats-track { stroke: rgba(255,255,255,.11); pointer-events: none; }
+  .site-stats-arc { cursor: pointer; stroke: transparent; stroke-width: 0; outline: none; }
+  [data-stat-key="moment"] { --stat-color: var(--stat-moment); }
+  [data-stat-key="video"] { --stat-color: var(--stat-video); }
+  [data-stat-key="article"] { --stat-color: var(--stat-article); }
+  [data-stat-key="gallery"] { --stat-color: var(--stat-gallery); }
+  .site-stats-arc { fill: var(--stat-color); }
+  .site-stats-arc.is-active, .site-stats-arc:focus-visible { filter: brightness(1.16); stroke: #fff; stroke-width: 1; }
+  .site-stats-legend { display: flex; flex-direction: column; gap: 7px; flex: 0 0 auto; }
+  .site-stats-label { display: flex; align-items: center; gap: 7px; padding: 3px 4px; border: 0; border-radius: 4px; appearance: none; background: transparent; color: #f5f7ff; font: inherit; font-size: 12px; line-height: 1.45; cursor: pointer; white-space: nowrap; }
+  .site-stats-dot { display: inline-block; width: 9px; height: 9px; border-radius: 3px; background: var(--stat-color); box-shadow: inset 0 0 0 1px rgba(255,255,255,.15); }
+  .site-stats-label:hover, .site-stats-label.is-active { background: rgba(255,255,255,.09); }
+  .site-stats-label:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .site-stats-tooltip { position: fixed; z-index: 101; width: max-content; max-width: min(280px, calc(100vw - 24px)); padding: 9px 12px; border: 1px solid var(--lg-border); border-radius: 8px; background: rgba(10,17,29,.97); color: #fff; box-shadow: 0 4px 18px rgba(0,0,0,.25); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; pointer-events: none; }
+  .site-stats-tooltip[hidden] { display: none !important; }
+</style>

@@ -1,5 +1,9 @@
-// 站点个性化设置：布局 / 风格 / 背景 / 主题色 / 模糊度 / 亮度 / 字号 / 信息流模式。
+// 站点个性化设置：布局 / 风格 / 背景 / 主题色 / 模糊度 / 亮度 / 字号 / 信息流模式 / 活跃记录。
 // 状态持久化在 localStorage，默认值来自 body 上的 data-* （由 site.ts 注入）。
+import { initActivitySettings } from './activity-settings.js';
+
+// 活跃记录先初始化；即使浏览器禁用存储，也保留它的即时显示开关。
+initActivitySettings();
 const LAYOUT_KEY = 'photo-blog-layout';
 const STYLE_KEY = 'photo-blog-style';
 const BG_KEY = 'photo-blog-bg';

@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import ActivityHeatmap from '../components/ActivityHeatmap.astro';
 import { getCollection, render } from 'astro:content';
 import { site } from '../config/site';
 
@@ -38,6 +39,8 @@ const p = site.profile;
           )}
         </div>
       </div>
+      <!-- 资料区下方、关于我正文之前：文章与动态活跃日历 -->
+      <ActivityHeatmap enabled={p.activity.enabled} timeZone={p.activity.timeZone} />
       <!-- 底部：介绍文案矩形（由 md 文档定义） -->
       {Content && (
         <div class="about-desc">

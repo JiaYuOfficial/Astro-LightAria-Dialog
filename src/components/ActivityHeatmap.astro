@@ -1,0 +1,259 @@
+---
+import { getCollection } from 'astro:content';
+import SiteStats from './SiteStats.astro';
+import {
+  aggregateActivityDates,
+  buildActivityCalendar,
+  describeActivityDay,
+  DEFAULT_ACTIVITY_TIME_ZONE,
+} from '../lib/activity';
+
+interface Props {
+  enabled?: boolean;
+  timeZone?: string;
+}
+const { enabled = true, timeZone = DEFAULT_ACTIVITY_TIME_ZONE } = Astro.props;
+const [works, moments] = await Promise.all([getCollection('works'), getCollection('moments')]);
+// 只向浏览器传每日聚合数量，不包含正文、标题或访问密码。
+const counts = aggregateActivityDates(works.map((entry) => entry.data.date), moments.map((entry) => entry.data.date), timeZone);
+const calendar = buildActivityCalendar(counts, { timeZone });
+const payload = JSON.stringify(counts).replace(/</g, '\\u003c');
+---
+
+<section
+  id="activityHeatmap"
+  class="activity-heatmap"
+  data-activity-heatmap
+  data-time-zone={calendar.timeZone}
+  data-start-date={calendar.startDate}
+  data-end-date={calendar.endDate}
+  style={`--activity-columns:${calendar.weeks.length}`}
+  hidden={!enabled}
+  aria-label="站点活跃记录与内容构成统计"
+>
+  <div class="activity-overview">
+    <div class="activity-calendar-pane" role="group" aria-label="最近约半年每日发布活跃记录，按完整周对齐">
+      <div class="activity-scroll" data-activity-scroll>
+        <div class="activity-chart">
+          <div class="activity-months" aria-hidden="true" data-activity-months>
+            {calendar.months.map((month) => <span style={`grid-column:${month.column + 1}`}>{month.label}</span>)}
+          </div>
+          <div class="activity-days" role="group" aria-label="每天一格，上下键逐日、左右键逐周，Home 到首日，End 到今天" data-activity-days>
+            {calendar.days.map((day) => day.inRange ? (
+              <button
+                type="button"
+                class="activity-day"
+                data-date={day.date}
+                data-level={day.level}
+                tabindex={day.date === calendar.endDate ? 0 : -1}
+                aria-label={describeActivityDay(day)}
+                title={describeActivityDay(day)}
+              />
+            ) : <span class="activity-pad" data-future-date={day.date} title={`${day.date}（尚未到来）`} aria-hidden="true" />)}
+          </div>
+        </div>
+      </div>
+    </div>
+    <SiteStats />
+  </div>
+  <script type="application/json" data-activity-counts set:html={payload} />
+  <!-- 克隆模板时保留 Astro 的 scoped CSS 属性。 -->
+  <template data-activity-day-template><button type="button" class="activity-day" tabindex="-1" /></template>
+  <template data-activity-pad-template><span class="activity-pad" aria-hidden="true" /></template>
+  <template data-activity-month-template><span /></template>
+  <template data-activity-tooltip-template><div class="activity-tooltip" role="tooltip" aria-hidden="true" hidden /></template>
+</section>
+
+<script>
+  import { buildActivityCalendar, describeActivityDay, type ActivityCount } from '../lib/activity';
+
+  const root = document.querySelector<HTMLElement>('[data-activity-heatmap]');
+  if (root) {
+    const counts: ActivityCount[] = JSON.parse(root.querySelector('[data-activity-counts]')?.textContent || '[]');
+    const grid = root.querySelector<HTMLElement>('[data-activity-days]')!;
+    const scroll = root.querySelector<HTMLElement>('[data-activity-scroll]')!;
+    const dayTemplate = root.querySelector<HTMLTemplateElement>('[data-activity-day-template]')!;
+    const padTemplate = root.querySelector<HTMLTemplateElement>('[data-activity-pad-template]')!;
+    const monthTemplate = root.querySelector<HTMLTemplateElement>('[data-activity-month-template]')!;
+    const tooltipTemplate = root.querySelector<HTMLTemplateElement>('[data-activity-tooltip-template]')!;
+    // 浮层放到 body，避免玻璃卡片的 backdrop-filter 改变 fixed 定位参照。
+    const tooltip = tooltipTemplate.content.firstElementChild!.cloneNode(true) as HTMLElement;
+    document.body.append(tooltip);
+    let calendar = buildActivityCalendar(counts, { timeZone: root.dataset.timeZone });
+    let visibleDays = calendar.days.filter((day) => day.inRange);
+    let selectedDate = calendar.endDate;
+    const buttons = () => [...grid.querySelectorAll<HTMLButtonElement>('button[data-date]')];
+    const hideTooltip = () => { tooltip.hidden = true; };
+    const showTooltip = (date: string) => {
+      const day = visibleDays.find((item) => item.date === date);
+      const button = buttons().find((item) => item.dataset.date === date);
+      if (!day || !button || root.hidden) return;
+      tooltip.textContent = describeActivityDay(day).replace('：', '\n');
+      tooltip.hidden = false;
+      const rect = button.getBoundingClientRect();
+      const width = tooltip.offsetWidth;
+      const height = tooltip.offsetHeight;
+      const left = Math.max(12, Math.min(rect.left + rect.width / 2 - width / 2, window.innerWidth - width - 12));
+      const top = rect.top - height - 10 >= 12 ? rect.top - height - 10 : rect.bottom + 10;
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${top}px`;
+    };
+    const select = (date: string, focus = false) => {
+      selectedDate = date;
+      for (const button of buttons()) {
+        const active = button.dataset.date === date;
+        button.tabIndex = active ? 0 : -1;
+        if (active && focus) {
+          button.focus({ preventScroll: true });
+          const rect = button.getBoundingClientRect();
+          const viewport = scroll.getBoundingClientRect();
+          if (rect.left < viewport.left + 4) scroll.scrollLeft -= viewport.left + 4 - rect.left;
+          else if (rect.right > viewport.right - 4) scroll.scrollLeft += rect.right - viewport.right + 4;
+        }
+      }
+    };
+    const scrollToLatest = () => requestAnimationFrame(() => {
+      if (!root.hidden) scroll.scrollLeft = scroll.scrollWidth;
+    });
+    const render = () => {
+      hideTooltip();
+      root.style.setProperty('--activity-columns', String(calendar.weeks.length));
+      const fragment = document.createDocumentFragment();
+      for (const day of calendar.days) {
+        const template = day.inRange ? dayTemplate : padTemplate;
+        const element = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
+        if (day.inRange) {
+          element.dataset.date = day.date;
+          element.dataset.level = String(day.level);
+          element.setAttribute('aria-label', describeActivityDay(day));
+        } else {
+          element.dataset.futureDate = day.date;
+          element.title = `${day.date}（尚未到来）`;
+        }
+        fragment.append(element);
+      }
+      grid.replaceChildren(fragment);
+      const months = root.querySelector<HTMLElement>('[data-activity-months]')!;
+      months.replaceChildren(...calendar.months.map((month) => {
+        const element = monthTemplate.content.firstElementChild!.cloneNode(true) as HTMLElement;
+        element.textContent = month.label;
+        element.style.gridColumn = String(month.column + 1);
+        return element;
+      }));
+      root.dataset.startDate = calendar.startDate;
+      root.dataset.endDate = calendar.endDate;
+    };
+    const refresh = () => {
+      const next = buildActivityCalendar(counts, { timeZone: root.dataset.timeZone });
+      if (next.endDate === root.dataset.endDate) return;
+      const focused = grid.contains(document.activeElement);
+      const wasLatest = selectedDate === calendar.endDate;
+      calendar = next;
+      visibleDays = calendar.days.filter((day) => day.inRange);
+      if (wasLatest || !visibleDays.some((day) => day.date === selectedDate)) selectedDate = calendar.endDate;
+      render();
+      select(selectedDate, focused);
+      if (wasLatest) scrollToLatest();
+    };
+    if (calendar.endDate !== root.dataset.endDate) render();
+    // 无 JS 时保留原生 title；启用脚本后只使用统一浮层，避免双重提示。
+    buttons().forEach((button) => button.removeAttribute('title'));
+    select(selectedDate);
+    scrollToLatest();
+    grid.addEventListener('click', (event) => {
+      const button = (event.target as Element).closest<HTMLButtonElement>('button[data-date]');
+      if (button?.dataset.date) { select(button.dataset.date); showTooltip(button.dataset.date); }
+      else hideTooltip();
+    });
+    grid.addEventListener('focusin', (event) => {
+      const button = event.target as HTMLButtonElement;
+      if (button.dataset.date) { select(button.dataset.date); showTooltip(button.dataset.date); }
+    });
+    grid.addEventListener('focusout', (event) => {
+      if (!grid.contains(event.relatedTarget as Node | null)) hideTooltip();
+    });
+    grid.addEventListener('pointerover', (event) => {
+      const button = (event.target as Element).closest<HTMLButtonElement>('button[data-date]');
+      if (button?.dataset.date) showTooltip(button.dataset.date);
+      else hideTooltip();
+    });
+    grid.addEventListener('pointerleave', (event) => {
+      if (event.pointerType !== 'touch') hideTooltip();
+    });
+    grid.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') { hideTooltip(); return; }
+      const button = (event.target as Element).closest<HTMLButtonElement>('button[data-date]');
+      if (!button) return;
+      const index = visibleDays.findIndex((day) => day.date === button.dataset.date);
+      const offsets: Record<string, number> = { ArrowUp: -1, ArrowDown: 1, ArrowLeft: -7, ArrowRight: 7 };
+      let target: number;
+      if (event.key === 'Home') target = 0;
+      else if (event.key === 'End') target = visibleDays.length - 1;
+      else if (event.key in offsets) target = index + offsets[event.key];
+      else return;
+      event.preventDefault();
+      target = Math.max(0, Math.min(visibleDays.length - 1, target));
+      const date = visibleDays[target].date;
+      select(date, true);
+      showTooltip(date);
+    });
+    scroll.addEventListener('scroll', hideTooltip, { passive: true });
+    document.addEventListener('pointerdown', (event) => {
+      if (!grid.contains(event.target as Node)) hideTooltip();
+    });
+    window.addEventListener('resize', hideTooltip);
+    window.addEventListener('lightaria:activity', (event) => {
+      hideTooltip();
+      if ((event as CustomEvent<boolean>).detail) { refresh(); scrollToLatest(); }
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) hideTooltip();
+      else refresh();
+    });
+    window.addEventListener('pagehide', hideTooltip);
+    window.addEventListener('pageshow', refresh);
+    window.setInterval(() => { if (!document.hidden) refresh(); }, 60_000);
+  }
+</script>
+
+<style>
+  .activity-heatmap {
+    --activity-cell: 12px;
+    --activity-gap: 4px;
+    min-width: 0;
+    max-width: 100%;
+    container-type: inline-size;
+    margin-top: 26px;
+    padding: 14px 16px;
+    border: 1px solid var(--lg-border);
+    border-radius: var(--radius-md);
+    background: var(--lg-glass-soft);
+    -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(160%);
+    backdrop-filter: blur(var(--lg-blur)) saturate(160%);
+  }
+  .activity-heatmap[hidden] { display: none !important; }
+  :global(body.style-flat) .activity-heatmap { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .activity-overview { display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 24px; align-items: center; }
+  .activity-calendar-pane { min-width: 0; container-type: inline-size; }
+  .activity-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; padding: 4px; scrollbar-width: thin; }
+  .activity-chart { position: relative; width: max-content; margin-inline: 0; }
+  @supports (width: 1cqw) {
+    .activity-chart { --activity-cell: clamp(12px, calc((100cqw - (var(--activity-columns) - 1) * var(--activity-gap) - 8px) / var(--activity-columns)), 18px); }
+  }
+  .activity-months, .activity-days { display: grid; grid-template-columns: repeat(var(--activity-columns), var(--activity-cell)); gap: var(--activity-gap); }
+  .activity-months { margin-bottom: 8px; font-size: 11px; line-height: 16px; color: var(--lg-text-dim); }
+  .activity-months span { white-space: nowrap; }
+  .activity-days { position: relative; grid-auto-flow: column; grid-template-rows: repeat(7, var(--activity-cell)); }
+  .activity-day, .activity-pad { width: var(--activity-cell); height: var(--activity-cell); border-radius: 3px; }
+  .activity-day, .activity-pad { background: #353f50; border: 1px solid rgba(255,255,255,.18); }
+  .activity-day { padding: 0; margin: 0; appearance: none; cursor: pointer; }
+  .activity-day[data-level="1"] { background: color-mix(in srgb, var(--lg-accent-solid) 55%, #263041); }
+  .activity-day[data-level="2"] { background: color-mix(in srgb, var(--lg-accent-solid) 78%, #263041); }
+  .activity-day[data-level="3"] { background: var(--lg-accent-solid); }
+  .activity-day:hover { outline: 1px solid #fff; outline-offset: 1px; }
+  .activity-day:focus-visible { outline: 2px solid #fff; outline-offset: 2px; z-index: 1; }
+  .activity-tooltip { position: fixed; z-index: 100; width: max-content; max-width: min(320px, calc(100vw - 24px)); padding: 10px 12px; border: 1px solid var(--lg-border); border-radius: 8px; background: rgba(10,17,29,.97); color: #fff; box-shadow: 0 4px 18px rgba(0,0,0,.25); font-size: 12px; line-height: 1.7; white-space: pre-line; overflow-wrap: anywhere; pointer-events: none; }
+  .activity-tooltip[hidden] { display: none !important; }
+  @media (max-width: 960px) { .activity-overview { grid-template-columns: minmax(0, 1fr); gap: 18px; } }
+  @media (max-width: 720px) { .activity-heatmap { margin-top: 22px; padding: 12px; } }
+</style>
